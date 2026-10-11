@@ -1,0 +1,77 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: one_academy
+          POSTGRES_PASSWORD: local_dev_only
+          POSTGRES_DB: one_academy_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://one_academy:local_dev_only@localhost:5432/one_academy_test
+      NODE_ENV: test
+    steps:
+      # The docs freshness check reads per-file commit history.
+      - uses: actions/checkout@v5
+        with: { fetch-depth: 0 }
+
+      - uses: actions/setup-node@v5
+        with: { node-version: '22.16.0' }
+
+      # Not corepack: it cannot load pnpm 12's .mjs bin on this Node line.
+      - name: Install pnpm
+        run: npm install -g pnpm@12.11.2
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @one/db db:generate
+
+      - name: Apply migrations
+        run: pnpm --filter @one/db db:migrate:deploy
+
+      - name: Lint, typecheck, test, build
+        run: pnpm verify
+
+      - name: Architectural guardrails still reject violations
+        run: ./scripts/verify-lint-guardrails.sh
+
+      - name: OpenAPI document is current
+        run: |
+          pnpm --filter @one/shared gen:openapi
+          git diff --exit-code -- docs/api/openapi.json \
+            || { echo "::error::openapi.json is stale. Run: pnpm --filter @one/shared gen:openapi"; exit 1; }
+
+      - name: Prisma migrations match the schema
+        run: |
+          pnpm --filter @one/db exec prisma migrate diff \
+            --from-migrations prisma/migrations \
+            --to-schema-datamodel prisma/schema.prisma \
+            --shadow-database-url "$DATABASE_URL" \
+            --exit-code
+
+      # Advisory until the flow docs have proven trustworthy, then promote to blocking.
+      - name: Flow docs freshness
+        continue-on-error: true
+        run: pnpm exec tsx scripts/check-docs-freshness.ts

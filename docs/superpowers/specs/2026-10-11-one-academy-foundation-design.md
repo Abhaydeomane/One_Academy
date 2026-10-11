@@ -159,6 +159,20 @@ latest" without reading this:
   `8.0.0-rc.22`, a release candidate, while `@prisma/client` latest is `7.10.0`. An agent
   running `pnpm add prisma` would silently install an RC and desynchronize CLI from
   client. Always pin.
+
+  Prisma 7 changed three things that older examples get wrong, all confirmed during
+  implementation:
+
+  1. **`url` is no longer allowed in the `datasource` block.** The connection string lives
+     in `packages/db/prisma.config.ts` under `datasource.url`. A schema with `url = env(...)`
+     fails validation with `P1012`.
+  2. **The client requires a driver adapter** for a direct connection — `@prisma/adapter-pg`
+     wrapping `pg`, constructed in `src/client.ts`. There is no implicit engine connection.
+  3. **`.env` is not loaded automatically.** `prisma.config.ts` calls Node's
+     `process.loadEnvFile()`, and `db:seed` runs `tsx --env-file=.env`. An existing
+     environment variable still wins, so `DATABASE_URL=... pnpm ...` overrides correctly —
+     which is how the test database gets migrated.
+
 - **TypeScript 6.0.3, not 7.** `typescript-eslint@8.71.1` declares
   `typescript: ">=4.8.4 <6.1.0"`. TypeScript 7 (the native compiler) is stable and
   current, but adopting it would disable typescript-eslint — and therefore the R1–R6

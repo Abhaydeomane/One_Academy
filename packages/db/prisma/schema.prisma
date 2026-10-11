@@ -1,0 +1,278 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+// Prisma 7: the connection URL lives in prisma.config.ts, not here.
+datasource db {
+  provider = "postgresql"
+}
+
+enum Vertical {
+  INSTITUTE
+  HOSTEL
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  SUSPENDED
+}
+
+enum BatchStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum Mode {
+  ONLINE
+  OFFLINE
+  HYBRID
+}
+
+enum ReviewStatus {
+  PENDING
+  PUBLISHED
+  REJECTED
+}
+
+enum EnquiryStatus {
+  NEW
+  CONTACTED
+  CONVERTED
+  CLOSED
+}
+
+enum GlobalRole {
+  USER
+  ADMIN
+}
+
+enum MemberRole {
+  OWNER
+  MANAGER
+  VIEWER
+}
+
+enum OrgStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum MediaKind {
+  IMAGE
+  VIDEO
+  BROCHURE
+}
+
+enum TagKind {
+  EXAM
+  AMENITY
+  FACILITY
+}
+
+/// Partner account that owns listings. Mirrors a Clerk organization.
+model Organization {
+  id         String    @id @default(cuid(2))
+  name       String
+  slug       String    @unique
+  clerkOrgId String?   @unique
+  status     OrgStatus @default(ACTIVE)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  listings    Listing[]
+  memberships Membership[]
+}
+
+/// Local mirror of a Clerk user. globalRole is never set by any endpoint.
+model User {
+  id          String     @id @default(cuid(2))
+  clerkUserId String?    @unique
+  email       String     @unique
+  name        String?
+  globalRole  GlobalRole @default(USER)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  memberships Membership[]
+  reviews     Review[]
+}
+
+model Membership {
+  id             String     @id @default(cuid(2))
+  organizationId String
+  userId         String
+  role           MemberRole @default(VIEWER)
+  createdAt      DateTime   @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+}
+
+model City {
+  id    String @id @default(cuid(2))
+  slug  String @unique
+  name  String
+  state String
+
+  listings Listing[]
+}
+
+/// Shared core row for anything discoverable, discriminated by `vertical`.
+/// Adding a vertical means new profile tables, not changes here.
+model Listing {
+  id               String        @id @default(cuid(2))
+  vertical         Vertical
+  slug             String        @unique
+  name             String
+  status           ListingStatus @default(DRAFT)
+  organizationId   String
+  cityId           String
+  locality         String?
+  lat              Float?
+  lng              Float?
+  shortDescription String?
+  ratingAvg        Float         @default(0)
+  ratingCount      Int           @default(0)
+  publishedAt      DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  city             City              @relation(fields: [cityId], references: [id])
+  instituteProfile InstituteProfile?
+  batches          Batch[]
+  media            MediaAsset[]
+  reviews          Review[]
+  enquiries        Enquiry[]
+  tags             ListingTag[]
+  redirects        ListingRedirect[]
+
+  @@index([status, vertical, cityId])
+  @@index([organizationId])
+}
+
+/// A published slug is immutable (BR-002); a rename leaves a redirect behind so
+/// search traffic to the old URL is not lost.
+model ListingRedirect {
+  id        String   @id @default(cuid(2))
+  oldSlug   String   @unique
+  listingId String
+  createdAt DateTime @default(now())
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+}
+
+model MediaAsset {
+  id        String    @id @default(cuid(2))
+  listingId String
+  kind      MediaKind @default(IMAGE)
+  url       String
+  alt       String?
+  sortOrder Int       @default(0)
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId, sortOrder])
+}
+
+model Review {
+  id           String       @id @default(cuid(2))
+  listingId    String
+  authorUserId String
+  rating       Int
+  title        String?
+  body         String?
+  status       ReviewStatus @default(PENDING)
+  createdAt    DateTime     @default(now())
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  author  User    @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+
+  @@index([listingId, status])
+}
+
+model Enquiry {
+  id        String        @id @default(cuid(2))
+  listingId String
+  vertical  Vertical
+  batchId   String?
+  name      String
+  phone     String
+  email     String?
+  message   String?
+  status    EnquiryStatus @default(NEW)
+  source    String        @default("web")
+  createdAt DateTime      @default(now())
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  batch   Batch?  @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  @@index([listingId, createdAt])
+}
+
+model Tag {
+  id    String  @id @default(cuid(2))
+  slug  String  @unique
+  label String
+  kind  TagKind
+
+  listings ListingTag[]
+}
+
+model ListingTag {
+  listingId String
+  tagId     String
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([listingId, tagId])
+  @@index([tagId])
+}
+
+/// Institute-vertical attributes, one-to-one with a Listing.
+model InstituteProfile {
+  id              String  @id @default(cuid(2))
+  listingId       String  @unique
+  establishedYear Int?
+  facultyCount    Int?
+  modes           Mode[]  @default([])
+  website         String?
+  about           String?
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+/// feeAmount is integer minor units (paise) per BR-005 — never a float.
+/// The seatsAvailable range is also enforced by a CHECK constraint (BR-010).
+model Batch {
+  id             String      @id @default(cuid(2))
+  listingId      String
+  title          String
+  exam           String
+  mode           Mode        @default(OFFLINE)
+  startDate      DateTime
+  endDate        DateTime?
+  scheduleText   String?
+  seatsTotal     Int
+  seatsAvailable Int
+  feeAmount      Int
+  feeCurrency    String      @default("INR")
+  status         BatchStatus @default(DRAFT)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  listing   Listing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  enquiries Enquiry[]
+
+  @@index([listingId, status, startDate])
+}
