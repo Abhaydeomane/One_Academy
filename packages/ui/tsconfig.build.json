@@ -1,0 +1,12 @@
+{
+  "extends": "@one/config/tsconfig.base",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "rootDir": "src",
+    "outDir": "dist",
+    "noEmit": false,
+    "declaration": true
+  },
+  "include": ["src"]
+}

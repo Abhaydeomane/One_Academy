@@ -1,0 +1,12 @@
+{
+  "extends": "@one/config/tsconfig.react",
+  "compilerOptions": {
+    "plugins": [{ "name": "next" }],
+    // No baseUrl: TypeScript 6 deprecates it and TypeScript 7 removes it.
+    // Path aliases resolve relative to this file without it.
+    "paths": { "@/*": ["./src/*"] },
+    "incremental": true
+  },
+  "include": ["next-env.d.ts", "src/**/*.ts", "src/**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}

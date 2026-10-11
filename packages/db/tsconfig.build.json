@@ -1,0 +1,12 @@
+{
+  "extends": "@one/config/tsconfig.node",
+  "compilerOptions": {
+    // rootDir is the package root, not src, because src/client.ts imports the
+    // Prisma client from ../generated. The build copies that directory into
+    // dist so the emitted relative import still resolves.
+    "rootDir": ".",
+    "outDir": "dist",
+    "noEmit": false
+  },
+  "include": ["src"]
+}

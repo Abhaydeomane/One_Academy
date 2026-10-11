@@ -1,0 +1,41 @@
+@import '@one/ui/styles.css';
+
+/* Mobile-first baseline: 80-90% of traffic is phones.
+
+   - 16px inputs stop iOS zooming the viewport on focus.
+   - Interactive elements get a 44px minimum so they are reliably tappable.
+   - Sticky bars add the home-indicator inset rather than sitting under it. */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 1rem;
+  }
+}
+
+@utility tap-target {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+}
+
+@utility safe-bottom {
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Horizontal filter rails: scrollable, snapping, no visible scrollbar. */
+@utility scroll-rail {
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+@utility scroll-rail-hide-bar {
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

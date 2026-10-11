@@ -1,0 +1,4 @@
+{
+  "extends": "@one/config/tsconfig.react",
+  "include": ["src"]
+}
