@@ -97,8 +97,10 @@ is the monorepo. The local clone's `origin` now points at
 **left as they are** — not archived, not deleted — by the owner's decision. They hold no
 commits of substance and are not referenced by this design.
 
-The local directory is still named `One_Academy_Backend`; renaming it to `One_Academy` is
-cosmetic and optional.
+The local working copy was also renamed to `One_Academy`, and the two unused local clones
+were removed. Any absolute path mentioning `One_Academy_Backend` in an older document is
+stale; the repository now lives at
+`/Users/abhaydeomane/abhay/code/github/one_academy/One_Academy`.
 
 ### Workspace dependencies
 

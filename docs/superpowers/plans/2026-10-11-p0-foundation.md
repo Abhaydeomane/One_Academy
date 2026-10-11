@@ -716,7 +716,7 @@ Create a scratch workspace to validate the API preset before `apps/api` exists. 
 mkdir -p /tmp/boundary-check/src/modules/alpha /tmp/boundary-check/src/modules/beta
 cd /tmp/boundary-check
 cat > eslint.config.js <<'EOF'
-import api from '/Users/abhaydeomane/abhay/code/github/one_academy/One_Academy_Backend/packages/config/eslint/api.js'
+import api from '/Users/abhaydeomane/abhay/code/github/one_academy/One_Academy/packages/config/eslint/api.js'
 export default api
 EOF
 echo "import { prisma } from '@one/db'; export const r = prisma" > src/modules/alpha/alpha.routes.ts
