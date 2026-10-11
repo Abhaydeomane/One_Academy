@@ -63,12 +63,16 @@ jobs:
           git diff --exit-code -- docs/api/openapi.json \
             || { echo "::error::openapi.json is stale. Run: pnpm --filter @one/shared gen:openapi"; exit 1; }
 
+      # Exits 2 when the schema has outrun its migration history. Prisma 7 takes
+      # the shadow database from prisma.config.ts, not a flag.
       - name: Prisma migrations match the schema
+        env:
+          SHADOW_DATABASE_URL: postgresql://one_academy:local_dev_only@localhost:5432/one_academy_shadow
         run: |
+          PGPASSWORD=local_dev_only createdb -h localhost -U one_academy one_academy_shadow
           pnpm --filter @one/db exec prisma migrate diff \
             --from-migrations prisma/migrations \
-            --to-schema-datamodel prisma/schema.prisma \
-            --shadow-database-url "$DATABASE_URL" \
+            --to-schema prisma/schema.prisma \
             --exit-code
 
       # Advisory until the flow docs have proven trustworthy, then promote to blocking.

@@ -38,7 +38,13 @@ shape it will in production:
 psql -d postgres -c "CREATE ROLE one_academy WITH LOGIN PASSWORD 'local_dev_only' CREATEDB;"
 createdb -O one_academy one_academy_dev
 createdb -O one_academy one_academy_test
+createdb -O one_academy one_academy_e2e      # Playwright truncates tables
+createdb -O one_academy one_academy_shadow   # prisma migrate diff replays history here
 ```
+
+Four databases, each with a reason: `dev` for day-to-day work, `test` for the API's
+integration suite, `e2e` because Playwright truncates tables and would otherwise fight the
+integration suite, and `shadow` for `prisma migrate diff`.
 
 The password is local-only and deliberately not a secret. It must never appear in a
 deployed environment.
