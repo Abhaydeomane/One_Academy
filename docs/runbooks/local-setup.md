@@ -74,10 +74,15 @@ API on `:4000`, web on `:3000`, partner on `:3001`.
 
 ```bash
 pnpm verify                            # lint, typecheck, test, build — must be green
+pnpm e2e                               # Playwright; starts its own servers on 3100/4100
 ./scripts/verify-lint-guardrails.sh    # the architectural rules still fail the build
+pnpm exec tsx scripts/check-docs-freshness.ts
 curl -s http://localhost:4000/health   # {"status":"ok"}
 curl -s http://localhost:3000/institutes | grep -c "Alpha Academy"
 ```
+
+`pnpm e2e` is deliberately outside `pnpm verify`: it launches real servers, which would
+make the inner development loop slow and flaky. CI runs it as a separate job.
 
 ## Clerk
 

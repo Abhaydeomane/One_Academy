@@ -13,6 +13,7 @@
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "verify": "turbo lint typecheck test build",
+    "e2e": "turbo e2e",
     "format": "prettier --write .",
     "prepare": "husky"
   },

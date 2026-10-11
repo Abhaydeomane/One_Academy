@@ -4,10 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "echo no-op",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "playwright test"
+    "e2e": "playwright test"
   },
   "devDependencies": {
     "@one/config": "workspace:*",

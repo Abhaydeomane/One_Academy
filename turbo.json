@@ -10,6 +10,9 @@
     "typecheck": { "dependsOn": ["^build"] },
     "test": { "dependsOn": ["^build"] },
     "dev": { "cache": false, "persistent": true },
+    // Deliberately outside `verify`: e2e starts real servers, so it is its own
+    // gate rather than part of the inner loop.
+    "e2e": { "dependsOn": ["^build"], "cache": false },
     "db:generate": { "cache": false },
     "db:migrate": { "cache": false },
     "db:seed": { "cache": false },

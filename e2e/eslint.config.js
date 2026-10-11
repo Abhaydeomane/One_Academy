@@ -1,3 +1,7 @@
 import base from '@one/config/eslint/base'
 
-export default [...base, { rules: { 'no-console': 'off' } }]
+export default [
+  ...base,
+  { ignores: ['test-results/**', 'playwright-report/**'] },
+  { rules: { 'no-console': 'off' } },
+]

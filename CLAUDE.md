@@ -8,14 +8,15 @@ A discovery marketplace for coaching institutes. Three deployable apps in one mo
 
 Every workspace exposes `dev`, `build`, `lint`, `typecheck`, `test` under the same names.
 
-| Command                                         | Purpose                                                                        |
-| ----------------------------------------------- | ------------------------------------------------------------------------------ |
-| `pnpm verify`                                   | lint + typecheck + test + build. **A change is not done until this is green.** |
-| `pnpm --filter @one/api test`                   | API tests (needs local Postgres running)                                       |
-| `pnpm --filter @one/db db:migrate`              | create and apply a migration                                                   |
-| `pnpm --filter @one/shared gen:openapi`         | regenerate `docs/api/openapi.json`                                             |
-| `./scripts/verify-lint-guardrails.sh`           | prove the architectural rules still fail the build                             |
-| `pnpm exec tsx scripts/check-docs-freshness.ts` | flag flow docs whose code has moved                                            |
+| Command                                         | Purpose                                                                             |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `pnpm verify`                                   | lint + typecheck + test + build. **A change is not done until this is green.**      |
+| `pnpm e2e`                                      | Playwright end-to-end specs. Separate from `verify` because it starts real servers. |
+| `pnpm --filter @one/api test`                   | API tests (needs local Postgres running)                                            |
+| `pnpm --filter @one/db db:migrate`              | create and apply a migration                                                        |
+| `pnpm --filter @one/shared gen:openapi`         | regenerate `docs/api/openapi.json`                                                  |
+| `./scripts/verify-lint-guardrails.sh`           | prove the architectural rules still fail the build                                  |
+| `pnpm exec tsx scripts/check-docs-freshness.ts` | flag flow docs whose code has moved                                                 |
 
 Local setup, including the Postgres role and the two databases, is in
 `docs/runbooks/local-setup.md`.
