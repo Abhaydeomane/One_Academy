@@ -2,6 +2,7 @@ import express, { type Express } from 'express'
 import { config } from './config/index.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import { requestId } from './middleware/requestId.js'
+import { institutesRouter } from './modules/institutes/institutes.routes.js'
 
 // Assembly only. Business logic belongs in a module service.
 export function createServer(): Express {
@@ -31,7 +32,7 @@ export function createServer(): Express {
     res.json({ status: 'ok' })
   })
 
-  // Routers are mounted here as modules are added.
+  app.use('/api/v1/institutes', institutesRouter)
 
   app.use(errorHandler)
   return app
