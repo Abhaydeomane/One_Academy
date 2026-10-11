@@ -1,6 +1,6 @@
 # Flow: Institute discovery
 
-Last verified against commit: 60ae3d9244518076b7c76a5bed0040cee130f1af
+Last verified against commit: 8f89859e1f3f17c1855dc3bb9e828df2eba74100
 
 ## Purpose
 
