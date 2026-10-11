@@ -18,7 +18,7 @@ Every workspace exposes `dev`, `build`, `lint`, `typecheck`, `test` under the sa
 | `./scripts/verify-lint-guardrails.sh`           | prove the architectural rules still fail the build                                  |
 | `pnpm exec tsx scripts/check-docs-freshness.ts` | flag flow docs whose code has moved                                                 |
 
-Local setup, including the Postgres role and the two databases, is in
+Local setup, including the Postgres role and the four databases, is in
 `docs/runbooks/local-setup.md`.
 
 ## Non-negotiable rules
