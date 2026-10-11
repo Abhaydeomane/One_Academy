@@ -1,6 +1,6 @@
 # Flow: Listing lifecycle
 
-Last verified against commit: 8f89859e1f3f17c1855dc3bb9e828df2eba74100
+Last verified against commit: c339be4baf399c2bd8494a7c3526187bcc95c836
 
 ## Purpose
 
