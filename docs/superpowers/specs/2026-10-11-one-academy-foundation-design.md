@@ -91,17 +91,23 @@ One_Academy/
 Three repos exist and are effectively empty: `One_Academy_UI` (no commits),
 `One_Academy_Backend` (one commit), `One_Academy_Docs` (one commit).
 
-Recommended: rename `One_Academy_Backend` → `One_Academy` on GitHub, preserving the
-remote, and **archive** (not delete) the other two. Requires explicit approval before any
-remote is touched.
+**Resolved 2026-10-11.** `One_Academy_Backend` was renamed to `One_Academy` on GitHub and
+is the monorepo. The local clone's `origin` now points at
+`git@github.com:Abhaydeomane/One_Academy.git`. `One_Academy_UI` and `One_Academy_Docs` are
+**left as they are** — not archived, not deleted — by the owner's decision. They hold no
+commits of substance and are not referenced by this design.
+
+The local directory is still named `One_Academy_Backend`; renaming it to `One_Academy` is
+cosmetic and optional.
 
 ### Workspace dependencies
 
-Six `package.json` files. The root declares tooling only — no application dependencies.
+Six `package.json` files. The root declares tooling only — no application dependencies —
+plus `"packageManager": "pnpm@12.11.2"` and `"engines": { "node": ">=22.16" }`.
 
 | Workspace | Dependencies |
 |---|---|
-| root | turbo, typescript, eslint, prettier, husky, lint-staged |
+| root | turbo, typescript, eslint, typescript-eslint, eslint-plugin-boundaries, prettier, husky, lint-staged |
 | `apps/web` | next, react, `@one/ui`, `@one/shared` |
 | `apps/partner` | next, react, react-hook-form, @clerk/nextjs, `@one/ui`, `@one/shared` |
 | `apps/api` | express, pino, zod, @clerk/express, `@one/shared`, `@one/db` |
@@ -123,14 +129,48 @@ Shared dependency **versions** are pinned once via the pnpm catalog, so `web` an
 # pnpm-workspace.yaml
 packages: ['apps/*', 'packages/*']
 catalog:
-  react: 19.0.0
-  react-dom: 19.0.0
-  next: 15.1.0
-  zod: ^3.23.8
-  typescript: ^5.6.0
+  react: 19.3.0
+  react-dom: 19.3.0
+  next: 16.4.0
+  express: 5.3.0
+  '@types/express': 5.0.6
+  zod: 4.6.5
+  prisma: 7.10.0
+  '@prisma/client': 7.10.0
+  typescript: 6.0.3
+  vitest: 5.0.3
+  supertest: 7.3.1
+  tailwindcss: 4.3.3
+  pino: 10.4.0
+  '@clerk/nextjs': 7.9.14
+  '@clerk/express': 2.1.78
 ```
 
 Workspaces write `"react": "catalog:"`.
+
+### Version pins and why they are exact
+
+All versions above are verified as of 2026-10-11 and pinned exactly rather than
+caret-ranged. Agents install what the catalog says; a floating range lets two sessions
+produce different lockfiles. Three pins are load-bearing and must not be "upgraded to
+latest" without reading this:
+
+- **Prisma 7.10.0, not 8.** The npm `latest` dist-tag for `prisma` currently points at
+  `8.0.0-rc.22`, a release candidate, while `@prisma/client` latest is `7.10.0`. An agent
+  running `pnpm add prisma` would silently install an RC and desynchronize CLI from
+  client. Always pin.
+- **TypeScript 6.0.3, not 7.** `typescript-eslint@8.71.1` declares
+  `typescript: ">=4.8.4 <6.1.0"`. TypeScript 7 (the native compiler) is stable and
+  current, but adopting it would disable typescript-eslint — and therefore the R1–R6
+  enforcement in §6, which is the backbone of this design. 6.0.3 is the newest version
+  inside the supported window. Revisit when typescript-eslint supports 7.
+- **Express 5.3.0.** Express 5 forwards rejected promises from async handlers to the
+  error middleware automatically, so R6 needs no `asyncHandler` wrapper. Express 4
+  examples found online will add one; it is unnecessary and should be rejected in review.
+
+ESLint 10.12.0, typescript-eslint 8.71.1 (peer `eslint: ^10`) and
+eslint-plugin-boundaries 7.2.0 (peer `eslint: >=6`) are mutually compatible. ESLint 10 is
+flat-config only; `packages/config` ships flat config, and no `.eslintrc` may exist.
 
 ### Standard scripts
 
@@ -305,8 +345,12 @@ export const listInstitutesQuery = z.object({
 export type ListInstitutesQuery = z.infer<typeof listInstitutesQuery>
 ```
 
-`pnpm gen:openapi` emits `docs/api/openapi.json` via `zod-to-openapi`. **CI regenerates
-and fails on any diff**, so API documentation cannot rot.
+`pnpm gen:openapi` emits `docs/api/openapi.json` via
+`@asteasolutions/zod-to-openapi@9.1.0`, whose peer range is `zod: ^4.0.0` and so matches
+the pinned Zod 4.6.5. **CI regenerates and fails on any diff**, so API documentation
+cannot rot. Zod 4's built-in `z.toJSONSchema()` is deliberately not used: it produces JSON
+Schema, not the OpenAPI 3.1 document with path, parameter and response metadata that the
+generated spec needs.
 
 ### Conventions
 
@@ -519,11 +563,40 @@ hand-written.
 | `apps/web` | Vercel | Root directory `apps/web`; ignored build step `git diff --quiet HEAD^ HEAD -- apps/web packages/ui packages/shared` |
 | `apps/partner` | Vercel | Root directory `apps/partner`, same pattern |
 | `apps/api` | Render | Root directory `apps/api`; `pnpm install --filter @one/api...` |
-| Postgres | Render / Neon | Separate staging and production databases |
+| Postgres | Deferred | Local only for now; see below |
+
+Hosting is **not yet chosen** and does not block M1–M7. The table above is the intended
+shape, not a commitment.
 
 Each app validates its environment at boot with a Zod schema in `config/`, failing fast on
-a missing variable. `.env.example` is committed; real values live only in host
-dashboards. Migrations run as an explicit deploy step, never automatically at boot.
+a missing variable. `.env.example` is committed; real values live only in `.env.local`
+(git-ignored) and, later, host dashboards. Migrations run as an explicit deploy step,
+never automatically at boot.
+
+### Local development environment
+
+Provisioned and verified on 2026-10-11:
+
+| Component | Version | Notes |
+|---|---|---|
+| Node | 22.16.0 | via nvm |
+| pnpm | 12.11.2 | installed globally via npm; corepack 0.36 is incompatible with Node 22.16 and must not be used |
+| Postgres | 17.11 | Homebrew `postgresql@17`, running as a `brew services` daemon on port 5432 |
+
+Two databases owned by a non-superuser role `one_academy`, mirroring the production shape
+so the connection string format never changes:
+
+```
+postgresql://one_academy:local_dev_only@localhost:5432/one_academy_dev
+postgresql://one_academy:local_dev_only@localhost:5432/one_academy_test
+```
+
+The password is local-only and intentionally not a secret; it must never appear in a
+deployed environment. `postgresql@17` is keg-only, so
+`/opt/homebrew/opt/postgresql@17/bin` was appended to `PATH` in `~/.zshrc`.
+
+Integration tests (§12) run against `one_academy_test` locally and against a Postgres 17
+service container in CI, so **Docker is not required for local development.**
 
 Observability for P0: `pino` structured logs with a request ID per request. Error
 tracking deferred to P1.
@@ -543,13 +616,14 @@ the moderation state machine, and the contract.
 | M5 | `apps/web` | Institute list and detail pages render from the API; ISR configured; metadata, sitemap, JSON-LD present |
 | M6 | `apps/partner` | Clerk sign-in, org scoping enforced, create-batch screen writes through the API |
 | M7 | `docs/` | README, architecture, 2 flow docs with anchors, ADRs 0001–0007, business-rules, work templates, runbooks |
-| M8 | Deploys | All three apps deployed with path-filtered builds; deploy and rollback runbooks verified once |
+| M8 | Deploys — **deferred** | Hosting undecided (§17). P0 completes without it; all three apps run locally against local Postgres |
 
 ### P0 acceptance
 
-A partner signs in, creates a batch on their DRAFT listing, submits for review; an admin
-publishes it; the batch appears on the public detail page; a student submits an enquiry
-the partner can see. `pnpm verify` green, CI green, every flow doc current.
+Running locally: a partner signs in, creates a batch on their DRAFT listing, and submits
+it for review; an admin publishes it; the batch appears on the public detail page; a
+student submits an enquiry the partner can see. `pnpm verify` green, CI green on the
+pull request, every flow doc current.
 
 ## 15. Risks
 
@@ -575,7 +649,11 @@ Each phase gets its own spec, implementation plan, and cycle.
 
 ## 17. Open items
 
-- Approval to rename `One_Academy_Backend` → `One_Academy` and archive the other two
-  repositories. No remote will be touched before then.
-- Production hosting choice for Postgres (Render vs Neon) — decide at M8, does not block
-  M1–M7.
+- **Hosting for all three apps and Postgres** — deferred by decision. Does not block
+  M1–M7; revisit at M8. Until then everything runs locally.
+- **Clerk account and keys** — needed before M6 can be completed, not before.
+- **typescript-eslint support for TypeScript 7** — revisit the TS 6.0.3 pin once
+  available.
+
+Resolved since first draft: repository consolidation (§5), local Postgres provisioning
+(§13), and exact dependency versions (§5).
