@@ -12,3 +12,5 @@ generated/
 .DS_Store
 test-results/
 playwright-report/
+test-results/
+playwright-report/

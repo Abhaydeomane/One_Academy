@@ -86,6 +86,14 @@ BR-001, BR-002, BR-003, BR-004, BR-005, BR-010
 | Non-admin attempting to publish a listing    | 403 `FORBIDDEN`                  | Not reachable from the partner UI                                |
 | Renaming a published slug                    | 409 `SLUG_IMMUTABLE`             | "A published listing address cannot be changed."                 |
 
+## Known gap: moderation is not instant on the public site
+
+Public pages cache for 300 seconds (`revalidate` in `apps/web`), so a status change takes
+up to five minutes to reach visitors. Publishing appearing late is merely annoying;
+**suspending taking effect late is a real moderation gap** — a listing withdrawn for cause
+stays reachable until the cache expires. BR-009 therefore holds at the API immediately but
+at the edge only eventually. Tracked as `docs/work/requests/REQ-002`.
+
 ## Related flows
 
 `institute-discovery.md` — what becomes visible once PUBLISHED.
