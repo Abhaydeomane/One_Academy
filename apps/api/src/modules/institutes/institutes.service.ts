@@ -1,5 +1,6 @@
 import type {
   BatchSummary,
+  CreateBatchBody,
   InstituteDetail,
   InstituteSummary,
   ListInstitutesQuery,
@@ -10,8 +11,13 @@ import type {
   UpdateListingBody,
 } from '@one/shared'
 import { NotFoundError } from '../../lib/errors.js'
+import * as accounts from '../accounts/accounts.service.js'
 import * as batches from '../batches/batches.service.js'
-import { assertOrgOwnsListing, resolvePublishedSlug } from '../listings/listings.service.js'
+import {
+  assertOrgOwnsListing,
+  resolvePublishedSlug,
+  submitForReview,
+} from '../listings/listings.service.js'
 import * as repo from './institutes.repository.js'
 
 function toSummary(row: repo.InstituteRow, batchCount: number): InstituteSummary {
@@ -121,6 +127,30 @@ export async function getForOrg(
     website: row.instituteProfile?.website ?? null,
     batches: await batches.listAllForListing(listingId),
   }
+}
+
+/// Routes receive a Clerk organisation id; everything below the route works in
+/// local Organization ids. R4 keeps the route out of the accounts module, so
+/// the translation is exposed here.
+export async function resolveOrganizationId(clerkOrgId: string): Promise<string> {
+  return accounts.resolveLocalOrgId(clerkOrgId)
+}
+
+export async function createBatchForOrg(
+  listingId: string,
+  organizationId: string,
+  body: CreateBatchBody,
+): Promise<BatchSummary> {
+  return batches.createForOrg(listingId, organizationId, body)
+}
+
+export async function submitForReviewForOrg(
+  listingId: string,
+  organizationId: string,
+): Promise<PartnerListingDetail> {
+  await assertOrgOwnsListing(listingId, organizationId)
+  await submitForReview(listingId)
+  return getForOrg(listingId, organizationId)
 }
 
 export async function updateForOrg(

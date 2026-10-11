@@ -4,8 +4,11 @@ import { config } from './config/index.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import { requestId } from './middleware/requestId.js'
 import { accountsRouter } from './modules/accounts/accounts.routes.js'
+import { partnerBatchesRouter } from './modules/batches/batches.partner.routes.js'
 import { enquiriesRouter } from './modules/enquiries/enquiries.routes.js'
+import { partnerInstitutesRouter } from './modules/institutes/institutes.partner.routes.js'
 import { institutesRouter } from './modules/institutes/institutes.routes.js'
+import { adminListingsRouter } from './modules/listings/listings.admin.routes.js'
 
 // Assembly only. Business logic belongs in a module service.
 export function createServer(): Express {
@@ -43,6 +46,9 @@ export function createServer(): Express {
 
   app.use('/api/v1/institutes', institutesRouter)
   app.use('/api/v1/enquiries', enquiriesRouter)
+  app.use('/api/v1/partner/listings', partnerInstitutesRouter)
+  app.use('/api/v1/partner/batches', partnerBatchesRouter)
+  app.use('/api/v1/admin/listings', adminListingsRouter)
 
   app.use(errorHandler)
   return app

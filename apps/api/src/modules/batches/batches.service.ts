@@ -5,8 +5,15 @@ import type {
   UpdateBatchBody,
 } from '@one/shared'
 import { ConflictError, NotFoundError } from '../../lib/errors.js'
+import * as accounts from '../accounts/accounts.service.js'
 import { assertOrgOwnsListing, isPublished } from '../listings/listings.service.js'
 import * as repo from './batches.repository.js'
+
+/// Routes receive a Clerk organisation id; everything below works in local
+/// Organization ids. R4 keeps the route out of the accounts module.
+export async function resolveOrganizationId(clerkOrgId: string): Promise<string> {
+  return accounts.resolveLocalOrgId(clerkOrgId)
+}
 
 export function toSummary(row: repo.BatchRow): BatchSummary {
   return {
