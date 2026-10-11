@@ -1,0 +1,24 @@
+@import '@one/ui/styles.css';
+
+/* Institute staff manage listings from phones too, so the same mobile
+   baseline as the public site applies here. */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 1rem;
+  }
+}
+
+@utility tap-target {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+}
+
+@utility safe-bottom {
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+}
