@@ -34,29 +34,29 @@ Every task's requirements implicitly include this section. Values are copied ver
 
 ### Architectural rules enforced by lint (R1–R6)
 
-| # | Rule |
-|---|---|
-| R1 | Route files must not import Prisma or `@one/db` |
-| R2 | Service files must not import `express` or reference `req`/`res` |
-| R3 | Only `*.repository.ts` may import the Prisma client |
-| R4 | Cross-module access goes through the other module's service — never its repository |
-| R5 | Every route input is validated by a Zod schema from `@one/shared` |
-| R6 | Errors are thrown as `AppError` subclasses; only `errorHandler` maps them to HTTP |
+| #   | Rule                                                                               |
+| --- | ---------------------------------------------------------------------------------- |
+| R1  | Route files must not import Prisma or `@one/db`                                    |
+| R2  | Service files must not import `express` or reference `req`/`res`                   |
+| R3  | Only `*.repository.ts` may import the Prisma client                                |
+| R4  | Cross-module access goes through the other module's service — never its repository |
+| R5  | Every route input is validated by a Zod schema from `@one/shared`                  |
+| R6  | Errors are thrown as `AppError` subclasses; only `errorHandler` maps them to HTTP  |
 
 ### Business rules (BR IDs referenced by tests)
 
-| ID | Rule |
-|---|---|
-| BR-001 | A Listing transitions to PUBLISHED only by a global ADMIN |
-| BR-002 | A PUBLISHED Listing's slug is immutable; a change creates a ListingRedirect |
-| BR-003 | A Batch cannot be PUBLISHED with a `startDate` in the past |
-| BR-004 | A Batch cannot be PUBLISHED unless its parent Listing is PUBLISHED |
-| BR-005 | Monetary values are integer minor units with an explicit currency code |
-| BR-006 | Reviews are PENDING until moderated *(schema only in P0, no endpoints)* |
-| BR-007 | Enquiries are readable only by the owning Organization and global ADMINs |
-| BR-008 | Comparison accepts 2–4 listings of the same vertical *(P1, not implemented here)* |
-| BR-009 | Only PUBLISHED listings appear in public search or detail routes |
-| BR-010 | `seatsAvailable` is always between 0 and `seatsTotal` inclusive |
+| ID     | Rule                                                                              |
+| ------ | --------------------------------------------------------------------------------- |
+| BR-001 | A Listing transitions to PUBLISHED only by a global ADMIN                         |
+| BR-002 | A PUBLISHED Listing's slug is immutable; a change creates a ListingRedirect       |
+| BR-003 | A Batch cannot be PUBLISHED with a `startDate` in the past                        |
+| BR-004 | A Batch cannot be PUBLISHED unless its parent Listing is PUBLISHED                |
+| BR-005 | Monetary values are integer minor units with an explicit currency code            |
+| BR-006 | Reviews are PENDING until moderated _(schema only in P0, no endpoints)_           |
+| BR-007 | Enquiries are readable only by the owning Organization and global ADMINs          |
+| BR-008 | Comparison accepts 2–4 listings of the same vertical _(P1, not implemented here)_ |
+| BR-009 | Only PUBLISHED listings appear in public search or detail routes                  |
+| BR-010 | `seatsAvailable` is always between 0 and `seatsTotal` inclusive                   |
 
 ---
 
@@ -65,98 +65,106 @@ Every task's requirements implicitly include this section. Values are copied ver
 Files that change together live together. Each API module owns its routes, service, repository and tests in one directory, so a change to one domain concept touches one folder.
 
 ### Root
-| File | Responsibility |
-|---|---|
-| `package.json` | Tooling devDependencies, `packageManager`, root scripts delegating to Turborepo |
-| `pnpm-workspace.yaml` | Workspace globs and the version catalog |
-| `turbo.json` | Task graph and cache inputs/outputs |
-| `.gitignore` | Node, Next, Prisma, env, coverage artifacts |
-| `.npmrc` | pnpm strictness settings |
-| `CLAUDE.md` | Root agent contract: commands, R1–R6, definition of done |
-| `.husky/pre-commit`, `.husky/pre-push` | Local gates |
-| `.github/workflows/ci.yml` | All CI jobs |
+
+| File                                   | Responsibility                                                                  |
+| -------------------------------------- | ------------------------------------------------------------------------------- |
+| `package.json`                         | Tooling devDependencies, `packageManager`, root scripts delegating to Turborepo |
+| `pnpm-workspace.yaml`                  | Workspace globs and the version catalog                                         |
+| `turbo.json`                           | Task graph and cache inputs/outputs                                             |
+| `.gitignore`                           | Node, Next, Prisma, env, coverage artifacts                                     |
+| `.npmrc`                               | pnpm strictness settings                                                        |
+| `CLAUDE.md`                            | Root agent contract: commands, R1–R6, definition of done                        |
+| `.husky/pre-commit`, `.husky/pre-push` | Local gates                                                                     |
+| `.github/workflows/ci.yml`             | All CI jobs                                                                     |
 
 ### `packages/config` — shared tooling config, no runtime code
-| File | Responsibility |
-|---|---|
-| `tsconfig.base.json` | Compiler options shared by every workspace |
-| `tsconfig.node.json`, `tsconfig.react.json` | Environment-specific overlays |
-| `eslint/base.js` | JS/TS/prettier rules for all workspaces |
-| `eslint/api.js` | Adds R1–R6 boundary enforcement |
-| `eslint/next.js` | Adds Next.js and React rules |
-| `prettier.json` | Formatting |
+
+| File                                        | Responsibility                             |
+| ------------------------------------------- | ------------------------------------------ |
+| `tsconfig.base.json`                        | Compiler options shared by every workspace |
+| `tsconfig.node.json`, `tsconfig.react.json` | Environment-specific overlays              |
+| `eslint/base.js`                            | JS/TS/prettier rules for all workspaces    |
+| `eslint/api.js`                             | Adds R1–R6 boundary enforcement            |
+| `eslint/next.js`                            | Adds Next.js and React rules               |
+| `prettier.json`                             | Formatting                                 |
 
 ### `packages/db` — the only workspace that talks to Postgres
-| File | Responsibility |
-|---|---|
-| `prisma/schema.prisma` | Shared core + institute vertical models |
-| `prisma/migrations/**` | Generated migration history |
-| `prisma/seed.ts` | Deterministic development data |
-| `src/client.ts` | Prisma client singleton export |
-| `src/index.ts` | Public surface: client plus generated enums/types |
+
+| File                   | Responsibility                                    |
+| ---------------------- | ------------------------------------------------- |
+| `prisma/schema.prisma` | Shared core + institute vertical models           |
+| `prisma/migrations/**` | Generated migration history                       |
+| `prisma/seed.ts`       | Deterministic development data                    |
+| `src/client.ts`        | Prisma client singleton export                    |
+| `src/index.ts`         | Public surface: client plus generated enums/types |
 
 ### `packages/shared` — the API contract, consumed by all three apps
-| File | Responsibility |
-|---|---|
-| `src/errors.ts` | `ErrorCode` enum, error envelope type |
-| `src/pagination.ts` | `paginationQuery`, `paginated()` response factory |
-| `src/contracts/institutes.ts` | Public institute query/response schemas |
-| `src/contracts/batches.ts` | Batch schemas, public and partner |
-| `src/contracts/enquiries.ts` | Enquiry create schema |
-| `src/contracts/partner.ts` | Partner listing/batch mutation schemas |
-| `src/contracts/admin.ts` | Admin moderation schemas |
-| `src/index.ts` | Barrel export |
+
+| File                          | Responsibility                                    |
+| ----------------------------- | ------------------------------------------------- |
+| `src/errors.ts`               | `ErrorCode` enum, error envelope type             |
+| `src/pagination.ts`           | `paginationQuery`, `paginated()` response factory |
+| `src/contracts/institutes.ts` | Public institute query/response schemas           |
+| `src/contracts/batches.ts`    | Batch schemas, public and partner                 |
+| `src/contracts/enquiries.ts`  | Enquiry create schema                             |
+| `src/contracts/partner.ts`    | Partner listing/batch mutation schemas            |
+| `src/contracts/admin.ts`      | Admin moderation schemas                          |
+| `src/index.ts`                | Barrel export                                     |
 
 ### `apps/api` — Express
-| File | Responsibility |
-|---|---|
-| `src/config/index.ts` | Zod-validated environment, typed config object |
-| `src/lib/errors.ts` | `AppError` and subclasses |
-| `src/lib/logger.ts` | pino instance |
-| `src/middleware/requestId.ts` | Correlation id per request |
-| `src/middleware/validate.ts` | Zod validation producing `req.valid` |
-| `src/middleware/errorHandler.ts` | The only place mapping errors to HTTP |
-| `src/middleware/auth.ts` | Clerk session → `req.auth`, role and org guards |
-| `src/modules/listings/*` | Shared core: slug resolution, status filtering, redirects |
-| `src/modules/institutes/*` | Public institute endpoints |
-| `src/modules/batches/*` | Batch reads and partner mutations |
-| `src/modules/enquiries/*` | Lead capture |
-| `src/modules/accounts/*` | User/Org/Membership mirror and Clerk webhook |
-| `src/server.ts` | App assembly only |
-| `src/index.ts` | Process entry |
-| `test/helpers/db.ts`, `test/helpers/app.ts` | Integration test harness |
+
+| File                                        | Responsibility                                            |
+| ------------------------------------------- | --------------------------------------------------------- |
+| `src/config/index.ts`                       | Zod-validated environment, typed config object            |
+| `src/lib/errors.ts`                         | `AppError` and subclasses                                 |
+| `src/lib/logger.ts`                         | pino instance                                             |
+| `src/middleware/requestId.ts`               | Correlation id per request                                |
+| `src/middleware/validate.ts`                | Zod validation producing `req.valid`                      |
+| `src/middleware/errorHandler.ts`            | The only place mapping errors to HTTP                     |
+| `src/middleware/auth.ts`                    | Clerk session → `req.auth`, role and org guards           |
+| `src/modules/listings/*`                    | Shared core: slug resolution, status filtering, redirects |
+| `src/modules/institutes/*`                  | Public institute endpoints                                |
+| `src/modules/batches/*`                     | Batch reads and partner mutations                         |
+| `src/modules/enquiries/*`                   | Lead capture                                              |
+| `src/modules/accounts/*`                    | User/Org/Membership mirror and Clerk webhook              |
+| `src/server.ts`                             | App assembly only                                         |
+| `src/index.ts`                              | Process entry                                             |
+| `test/helpers/db.ts`, `test/helpers/app.ts` | Integration test harness                                  |
 
 ### `apps/web` — public Next.js
-| File | Responsibility |
-|---|---|
-| `src/lib/api.ts` | Typed fetch client that parses responses with shared schemas |
-| `src/app/layout.tsx`, `src/app/page.tsx` | Shell and home |
-| `src/app/institutes/page.tsx` | Listing index |
-| `src/app/institutes/[slug]/page.tsx` | Detail, metadata, JSON-LD |
-| `src/app/institutes/[slug]/EnquiryForm.tsx` | Client component for lead capture |
-| `src/app/sitemap.ts` | Generated sitemap |
+
+| File                                        | Responsibility                                               |
+| ------------------------------------------- | ------------------------------------------------------------ |
+| `src/lib/api.ts`                            | Typed fetch client that parses responses with shared schemas |
+| `src/app/layout.tsx`, `src/app/page.tsx`    | Shell and home                                               |
+| `src/app/institutes/page.tsx`               | Listing index                                                |
+| `src/app/institutes/[slug]/page.tsx`        | Detail, metadata, JSON-LD                                    |
+| `src/app/institutes/[slug]/EnquiryForm.tsx` | Client component for lead capture                            |
+| `src/app/sitemap.ts`                        | Generated sitemap                                            |
 
 ### `apps/partner` — authenticated Next.js
-| File | Responsibility |
-|---|---|
-| `src/middleware.ts` | Clerk route protection |
-| `src/lib/api.ts` | Server-side authenticated API client |
-| `src/app/layout.tsx` | Shell with Clerk provider |
-| `src/app/dashboard/page.tsx` | Owned listings |
-| `src/app/dashboard/[listingId]/page.tsx` | Listing detail with batches |
-| `src/app/dashboard/[listingId]/BatchForm.tsx` | Create/edit batch |
+
+| File                                          | Responsibility                       |
+| --------------------------------------------- | ------------------------------------ |
+| `src/middleware.ts`                           | Clerk route protection               |
+| `src/lib/api.ts`                              | Server-side authenticated API client |
+| `src/app/layout.tsx`                          | Shell with Clerk provider            |
+| `src/app/dashboard/page.tsx`                  | Owned listings                       |
+| `src/app/dashboard/[listingId]/page.tsx`      | Listing detail with batches          |
+| `src/app/dashboard/[listingId]/BatchForm.tsx` | Create/edit batch                    |
 
 ### `docs/`
-| File | Responsibility |
-|---|---|
-| `README.md`, `architecture.md` | Entry map and system overview |
-| `flows/*.md` | Living flow maps with code anchors |
-| `domain/business-rules.md`, `domain/glossary.md` | Canonical BR table and vocabulary |
-| `decisions/0001..0007-*.md` | ADRs |
-| `runbooks/*.md` | Local setup, migrations, release |
-| `work/requests/`, `work/bugs/`, `work/archive/` | Intake with templates |
-| `api/openapi.json` | Generated |
-| `scripts/check-docs-freshness.ts` | Drift detector (repo root `scripts/`) |
+
+| File                                             | Responsibility                        |
+| ------------------------------------------------ | ------------------------------------- |
+| `README.md`, `architecture.md`                   | Entry map and system overview         |
+| `flows/*.md`                                     | Living flow maps with code anchors    |
+| `domain/business-rules.md`, `domain/glossary.md` | Canonical BR table and vocabulary     |
+| `decisions/0001..0007-*.md`                      | ADRs                                  |
+| `runbooks/*.md`                                  | Local setup, migrations, release      |
+| `work/requests/`, `work/bugs/`, `work/archive/`  | Intake with templates                 |
+| `api/openapi.json`                               | Generated                             |
+| `scripts/check-docs-freshness.ts`                | Drift detector (repo root `scripts/`) |
 
 ---
 
@@ -164,28 +172,30 @@ Files that change together live together. Each API module owns its routes, servi
 
 Phases are checkpoints, not separate plans. Backend is complete and independently reviewable after Task 15.
 
-| Phase | Tasks | Deliverable |
-|---|---|---|
-| A — Tooling | 1–3 | `pnpm verify` green on a skeleton; boundary rules provably reject violations; CI runs |
-| B — Data | 4–5 | Migrated schema and deterministic seed |
-| C — Contract | 6–8 | Zod contracts and generated OpenAPI with a staleness gate |
-| D — API | 9–15 | Every §9 endpoint implemented and integration-tested |
-| E — Web | 16–18 | Public list, detail, SEO and enquiry capture |
-| F — Partner | 19–20 | Authenticated batch management |
-| G — Docs | 21 | Seeded docs system and freshness script |
-| H — E2E | 22 | Two Playwright paths |
+| Phase        | Tasks | Deliverable                                                                           |
+| ------------ | ----- | ------------------------------------------------------------------------------------- |
+| A — Tooling  | 1–3   | `pnpm verify` green on a skeleton; boundary rules provably reject violations; CI runs |
+| B — Data     | 4–5   | Migrated schema and deterministic seed                                                |
+| C — Contract | 6–8   | Zod contracts and generated OpenAPI with a staleness gate                             |
+| D — API      | 9–15  | Every §9 endpoint implemented and integration-tested                                  |
+| E — Web      | 16–18 | Public list, detail, SEO and enquiry capture                                          |
+| F — Partner  | 19–20 | Authenticated batch management                                                        |
+| G — Docs     | 21    | Seeded docs system and freshness script                                               |
+| H — E2E      | 22    | Two Playwright paths                                                                  |
 
 ---
 
 ### Task 1: Workspace skeleton and tooling
 
 **Files:**
+
 - Create: `package.json`, `pnpm-workspace.yaml`, `turbo.json`, `.npmrc`, `.gitignore`, `.prettierignore`
 - Create: `packages/config/package.json`, `packages/config/prettier.json`, `packages/config/tsconfig.base.json`, `packages/config/tsconfig.node.json`, `packages/config/tsconfig.react.json`
 - Create: `.husky/pre-commit`, `.husky/pre-push`
 - Keep: `README.md` (already present)
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces: the `@one/config` workspace exposing `prettier.json`, `tsconfig.base.json`, `tsconfig.node.json`, `tsconfig.react.json` by subpath; root scripts `dev`, `build`, `lint`, `typecheck`, `test`, `verify`.
 
@@ -492,11 +502,13 @@ git commit -m "chore: scaffold pnpm workspace with pinned tooling"
 The point of this task is not that ESLint runs — it is that a deliberate architecture violation **fails**. A fixture proving each rule is part of the deliverable.
 
 **Files:**
+
 - Create: `packages/config/eslint/base.js`, `packages/config/eslint/api.js`, `packages/config/eslint/next.js`
 - Create: `eslint.config.js` (root)
 - Create: `packages/config/eslint/__fixtures__/README.md`
 
 **Interfaces:**
+
 - Consumes: `@one/config` from Task 1.
 - Produces: `@one/config/eslint/base`, `@one/config/eslint/api`, `@one/config/eslint/next` as flat-config arrays. `api.js` exports a function `apiConfig({ tsconfigRootDir })` returning the config array.
 
@@ -510,7 +522,15 @@ import tseslint from 'typescript-eslint'
 import prettier from 'eslint-config-prettier'
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/.next/**', '**/generated/**', '**/coverage/**', '**/node_modules/**'] },
+  {
+    ignores: [
+      '**/dist/**',
+      '**/.next/**',
+      '**/generated/**',
+      '**/coverage/**',
+      '**/node_modules/**',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   prettier,
@@ -548,7 +568,12 @@ export default [
     settings: {
       'boundaries/elements': [
         { type: 'route', pattern: 'src/modules/*/*.routes.ts', mode: 'full', capture: ['module'] },
-        { type: 'service', pattern: 'src/modules/*/*.service.ts', mode: 'full', capture: ['module'] },
+        {
+          type: 'service',
+          pattern: 'src/modules/*/*.service.ts',
+          mode: 'full',
+          capture: ['module'],
+        },
         {
           type: 'repository',
           pattern: 'src/modules/*/*.repository.ts',
@@ -566,16 +591,11 @@ export default [
         'error',
         {
           default: 'disallow',
-          message: 'R4: cross-module access must go through the other module\'s service.',
+          message: "R4: cross-module access must go through the other module's service.",
           rules: [
             {
               from: ['route'],
-              allow: [
-                ['service', { module: '${from.module}' }],
-                'middleware',
-                'lib',
-                'config',
-              ],
+              allow: [['service', { module: '${from.module}' }], 'middleware', 'lib', 'config'],
             },
             {
               from: ['service'],
@@ -758,10 +778,12 @@ git commit -m "chore: add flat ESLint config enforcing module boundaries R1-R6"
 ### Task 3: CI workflow
 
 **Files:**
+
 - Create: `.github/workflows/ci.yml`
 - Create: `.github/pull_request_template.md`
 
 **Interfaces:**
+
 - Consumes: root scripts from Task 1.
 - Produces: a `ci` workflow whose `verify` job is the required status check; a Postgres 17 service on 5432 with the test database available to later tasks.
 
@@ -873,6 +895,7 @@ git commit -m "ci: add verify workflow with Postgres service and PR template"
 ### Task 4: `@one/db` — Prisma schema and migration
 
 **Files:**
+
 - Create: `packages/db/package.json`, `packages/db/tsconfig.json`, `packages/db/eslint.config.js`
 - Create: `packages/db/prisma/schema.prisma`
 - Create: `packages/db/src/client.ts`, `packages/db/src/index.ts`
@@ -880,6 +903,7 @@ git commit -m "ci: add verify workflow with Postgres service and PR template"
 - Generated: `packages/db/prisma/migrations/**`
 
 **Interfaces:**
+
 - Consumes: `@one/config` presets.
 - Produces: `@one/db` exporting `prisma` (client singleton), `Prisma` namespace, and the enums `Vertical`, `ListingStatus`, `BatchStatus`, `Mode`, `ReviewStatus`, `EnquiryStatus`, `GlobalRole`, `MemberRole`, `OrgStatus`, `MediaKind`, `TagKind`. Scripts `db:generate`, `db:migrate`, `db:migrate:deploy`, `db:reset`, `db:seed`.
 
@@ -1263,9 +1287,11 @@ git commit -m "feat(db): add core listing schema and institute vertical with sea
 ### Task 5: Deterministic seed data
 
 **Files:**
+
 - Create: `packages/db/prisma/seed.ts`
 
 **Interfaces:**
+
 - Consumes: `@one/db` exports from Task 4.
 - Produces: a `db:seed` script creating fixed-ID records. Later tasks and E2E tests reference the IDs `org-seed-alpha`, `listing-alpha` (slug `alpha-academy`, PUBLISHED) and `listing-draft` (slug `draft-academy`, DRAFT).
 
@@ -1460,11 +1486,13 @@ git commit -m "feat(db): add idempotent seed with published and draft fixtures"
 ### Task 6: `@one/shared` — error codes and pagination
 
 **Files:**
+
 - Create: `packages/shared/package.json`, `packages/shared/tsconfig.json`, `packages/shared/eslint.config.js`, `packages/shared/vitest.config.ts`
 - Create: `packages/shared/src/errors.ts`, `packages/shared/src/pagination.ts`, `packages/shared/src/index.ts`
 - Test: `packages/shared/src/pagination.test.ts`
 
 **Interfaces:**
+
 - Consumes: `@one/config`.
 - Produces:
   - `ERROR_CODES` — readonly tuple of codes; `type ErrorCode = (typeof ERROR_CODES)[number]`
@@ -1670,11 +1698,13 @@ git commit -m "feat(shared): add error codes and pagination contracts"
 ### Task 7: `@one/shared` — endpoint contracts
 
 **Files:**
+
 - Create: `packages/shared/src/contracts/institutes.ts`, `contracts/batches.ts`, `contracts/enquiries.ts`, `contracts/partner.ts`, `contracts/admin.ts`, `contracts/index.ts`
 - Modify: `packages/shared/src/index.ts`
 - Test: `packages/shared/src/contracts/contracts.test.ts`
 
 **Interfaces:**
+
 - Consumes: `paginationQuery`, `paginated` from Task 6.
 - Produces, all with inferred types of the same PascalCase name:
   - `listInstitutesQuery`, `instituteSummary`, `instituteListResponse`, `instituteDetail`, `instituteSlugParam`
@@ -1728,9 +1758,9 @@ describe('createEnquiryBody', () => {
   })
 
   it('rejects a phone number that is not 10 digits', () => {
-    expect(
-      createEnquiryBody.safeParse({ listingSlug: 'a', name: 'B', phone: '123' }).success,
-    ).toBe(false)
+    expect(createEnquiryBody.safeParse({ listingSlug: 'a', name: 'B', phone: '123' }).success).toBe(
+      false,
+    )
   })
 })
 
@@ -2061,10 +2091,12 @@ git commit -m "feat(shared): add institute, batch, enquiry, partner and admin co
 ### Task 8: OpenAPI generation and the staleness gate
 
 **Files:**
+
 - Create: `packages/shared/scripts/gen-openapi.ts`
 - Create: `docs/api/openapi.json` (generated output, committed)
 
 **Interfaces:**
+
 - Consumes: every contract from Task 7.
 - Produces: `pnpm --filter @one/shared gen:openapi` writing `docs/api/openapi.json`; the CI step added in Task 3 now passes.
 
@@ -2120,7 +2152,10 @@ registry.registerPath({
   path: '/api/v1/institutes',
   summary: 'List published institutes',
   request: { query: listInstitutesQuery },
-  responses: { 200: { description: 'Paginated institutes', ...json(instituteListResponse) }, 400: errors[400] },
+  responses: {
+    200: { description: 'Paginated institutes', ...json(instituteListResponse) },
+    400: errors[400],
+  },
 })
 
 registry.registerPath({
@@ -2128,7 +2163,10 @@ registry.registerPath({
   path: '/api/v1/institutes/{slug}',
   summary: 'Get a published institute by slug',
   request: { params: z.object({ slug: z.string() }) },
-  responses: { 200: { description: 'Institute detail', ...json(instituteDetail) }, 404: errors[404] },
+  responses: {
+    200: { description: 'Institute detail', ...json(instituteDetail) },
+    404: errors[404],
+  },
 })
 
 registry.registerPath({
@@ -2331,6 +2369,7 @@ git commit -m "feat(shared): generate OpenAPI 3.1 document from Zod contracts"
 ### Task 9: `apps/api` skeleton, error handling and test harness
 
 **Files:**
+
 - Create: `apps/api/package.json`, `tsconfig.json`, `eslint.config.js`, `vitest.config.ts`, `.env.example`, `.env`
 - Create: `apps/api/src/config/index.ts`, `src/lib/errors.ts`, `src/lib/logger.ts`
 - Create: `apps/api/src/middleware/requestId.ts`, `validate.ts`, `errorHandler.ts`
@@ -2339,6 +2378,7 @@ git commit -m "feat(shared): generate OpenAPI 3.1 document from Zod contracts"
 - Test: `apps/api/src/middleware/errorHandler.test.ts`
 
 **Interfaces:**
+
 - Consumes: `@one/shared` (`ErrorCode`, `errorEnvelope`), `@one/db` (`prisma`).
 - Produces:
   - `config` — `{ nodeEnv, port, databaseUrl, clerkSecretKey, clerkWebhookSecret, corsOrigins }`
@@ -2665,7 +2705,11 @@ export function errorHandler(
 ): void {
   if (error instanceof AppError) {
     const body: ErrorEnvelope = {
-      error: { code: error.code, message: error.message, ...(error.details ? { details: error.details } : {}) },
+      error: {
+        code: error.code,
+        message: error.message,
+        ...(error.details ? { details: error.details } : {}),
+      },
     }
     logger.warn({ requestId: req.id, code: error.code, path: req.path }, error.message)
     res.status(error.status).json(body)
@@ -3008,10 +3052,12 @@ git commit -m "feat(api): add server skeleton, typed errors and real-database te
 ### Task 10: `listings` module — the shared core
 
 **Files:**
+
 - Create: `apps/api/src/modules/listings/listings.repository.ts`, `listings.service.ts`
 - Test: `apps/api/src/modules/listings/listings.service.test.ts`
 
 **Interfaces:**
+
 - Consumes: `@one/db`, `AppError` subclasses.
 - Produces, exported from `listings.service.ts`:
   - `resolvePublishedSlug(slug: string)` → `{ listingId: string; canonicalSlug: string; redirected: boolean }` — throws `NotFoundError` if absent or not PUBLISHED (BR-009), follows `ListingRedirect` (BR-002)
@@ -3291,12 +3337,14 @@ git commit -m "feat(api): add listings core with slug resolution and status tran
 ### Task 11: `institutes` module — public endpoints
 
 **Files:**
+
 - Create: `apps/api/src/modules/institutes/institutes.repository.ts`, `institutes.service.ts`, `institutes.routes.ts`
 - Create: `apps/api/src/modules/batches/batches.repository.ts`, `batches.service.ts`
 - Modify: `apps/api/src/server.ts`
 - Test: `apps/api/src/modules/institutes/institutes.routes.test.ts`
 
 **Interfaces:**
+
 - Consumes: `resolvePublishedSlug` from Task 10; `listInstitutesQuery`, `instituteListResponse`, `instituteDetail`, `batchListResponse` from Task 7.
 - Produces:
   - `institutesRouter` — mounted at `/api/v1/institutes`
@@ -3652,12 +3700,7 @@ export async function findPublishedById(id: string): Promise<InstituteRow | null
 `apps/api/src/modules/institutes/institutes.service.ts`:
 
 ```ts
-import type {
-  InstituteDetail,
-  InstituteSummary,
-  ListInstitutesQuery,
-  Paginated,
-} from '@one/shared'
+import type { InstituteDetail, InstituteSummary, ListInstitutesQuery, Paginated } from '@one/shared'
 import { NotFoundError } from '../../lib/errors.js'
 import { resolvePublishedSlug } from '../listings/listings.service.js'
 import * as repo from './institutes.repository.js'
@@ -3773,7 +3816,7 @@ institutesRouter.get(
 In `apps/api/src/server.ts`, replace the `// Routers are mounted here by later tasks.` comment with:
 
 ```ts
-  app.use('/api/v1/institutes', institutesRouter)
+app.use('/api/v1/institutes', institutesRouter)
 ```
 
 and add the import at the top:
@@ -3810,11 +3853,13 @@ git commit -m "feat(api): add public institute list, detail and batch endpoints"
 ### Task 12: `enquiries` module — lead capture
 
 **Files:**
+
 - Create: `apps/api/src/modules/enquiries/enquiries.repository.ts`, `enquiries.service.ts`, `enquiries.routes.ts`
 - Modify: `apps/api/src/server.ts`
 - Test: `apps/api/src/modules/enquiries/enquiries.routes.test.ts`
 
 **Interfaces:**
+
 - Consumes: `resolvePublishedSlug` (Task 10), `createEnquiryBody`, `enquiryCreatedResponse` (Task 7).
 - Produces:
   - `enquiriesRouter` — mounted at `/api/v1/enquiries`
@@ -4069,7 +4114,7 @@ import { enquiriesRouter } from './modules/enquiries/enquiries.routes.js'
 ```
 
 ```ts
-  app.use('/api/v1/enquiries', enquiriesRouter)
+app.use('/api/v1/enquiries', enquiriesRouter)
 ```
 
 - [ ] **Step 7: Run the test to verify it passes**
@@ -4111,12 +4156,14 @@ git commit -m "feat(api): add rate-limited enquiry capture"
 ### Task 13: Clerk authentication and the account mirror
 
 **Files:**
+
 - Create: `apps/api/src/middleware/auth.ts`
 - Create: `apps/api/src/modules/accounts/accounts.repository.ts`, `accounts.service.ts`, `accounts.routes.ts`
 - Modify: `apps/api/src/server.ts`
 - Test: `apps/api/src/modules/accounts/accounts.service.test.ts`, `apps/api/src/middleware/auth.test.ts`
 
 **Interfaces:**
+
 - Consumes: `@clerk/express`, `@one/db`.
 - Produces:
   - `requireAuth` — Express middleware populating `req.auth = { userId, orgId, globalRole }`; throws `UnauthenticatedError` when absent
@@ -4354,7 +4401,11 @@ describe('syncOrganization and resolveLocalOrgId', () => {
 
   it('is idempotent', async () => {
     const first = await syncOrganization({ clerkOrgId: 'co_1', name: 'Alpha', slug: 'alpha' })
-    const second = await syncOrganization({ clerkOrgId: 'co_1', name: 'Alpha Renamed', slug: 'alpha' })
+    const second = await syncOrganization({
+      clerkOrgId: 'co_1',
+      name: 'Alpha Renamed',
+      slug: 'alpha',
+    })
     expect(second).toBe(first)
     expect(await prisma.organization.count()).toBe(1)
   })
@@ -4385,10 +4436,7 @@ export async function createUser(data: { clerkUserId: string; email: string; nam
   return user.id
 }
 
-export async function updateUser(
-  id: string,
-  data: { clerkUserId?: string; name?: string | null },
-) {
+export async function updateUser(id: string, data: { clerkUserId?: string; name?: string | null }) {
   await prisma.user.update({ where: { id }, data })
 }
 
@@ -4451,11 +4499,7 @@ export async function syncUser(input: { clerkUserId: string; email: string; name
   })
 }
 
-export async function syncOrganization(input: {
-  clerkOrgId: string
-  name: string
-  slug: string
-}) {
+export async function syncOrganization(input: { clerkOrgId: string; name: string; slug: string }) {
   const byClerk = await repo.findOrgByClerkId(input.clerkOrgId)
   if (byClerk) return byClerk.id
 
@@ -4557,9 +4601,9 @@ import { accountsRouter } from './modules/accounts/accounts.routes.js'
 Mount the webhook **before** `express.json()` (it needs the raw body), and add `clerkMiddleware()` after it:
 
 ```ts
-  app.use('/api/v1/webhooks', accountsRouter)
-  app.use(express.json({ limit: '1mb' }))
-  if (config.clerkSecretKey) app.use(clerkMiddleware())
+app.use('/api/v1/webhooks', accountsRouter)
+app.use(express.json({ limit: '1mb' }))
+if (config.clerkSecretKey) app.use(clerkMiddleware())
 ```
 
 Reorder `server.ts` accordingly: `requestId` → webhooks → `express.json` → `clerkMiddleware` → CORS → `/health` → routers → `errorHandler`.
@@ -4585,6 +4629,7 @@ git commit -m "feat(api): add Clerk auth guards and account mirror with webhook 
 ### Task 14: Partner endpoints
 
 **Files:**
+
 - Create: `apps/api/src/modules/institutes/institutes.partner.routes.ts`
 - Create: `apps/api/src/modules/batches/batches.partner.routes.ts`
 - Modify: `apps/api/src/modules/institutes/institutes.repository.ts`, `institutes.service.ts`
@@ -4593,6 +4638,7 @@ git commit -m "feat(api): add Clerk auth guards and account mirror with webhook 
 - Test: `apps/api/src/modules/institutes/institutes.partner.routes.test.ts`, `apps/api/src/modules/batches/batches.service.test.ts`
 
 **Interfaces:**
+
 - Consumes: `requireAuth`, `requireOrg`, `currentAuth` (Task 13); `resolveLocalOrgId` (Task 13); `assertOrgOwnsListing`, `submitForReview` (Task 10); partner contracts (Task 7).
 - Produces:
   - `partnerInstitutesRouter` — mounted at `/api/v1/partner/listings`
@@ -4646,7 +4692,7 @@ describe('createForOrg', () => {
     expect(row.status).toBe('DRAFT')
   })
 
-  it('forbids creating on another organization\'s listing', async () => {
+  it("forbids creating on another organization's listing", async () => {
     await expect(
       createForOrg(seed.publishedListingId, seed.otherOrgId, body()),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' })
@@ -4661,7 +4707,11 @@ describe('createForOrg', () => {
 
 describe('updateForOrg publishing rules', () => {
   it('refuses to publish a batch starting in the past (BR-003)', async () => {
-    const created = await createForOrg(seed.publishedListingId, seed.orgId, body({ startDate: past }))
+    const created = await createForOrg(
+      seed.publishedListingId,
+      seed.orgId,
+      body({ startDate: past }),
+    )
     await expect(
       updateForOrg(created.id, seed.orgId, { status: 'PUBLISHED' }),
     ).rejects.toMatchObject({ code: 'BATCH_START_DATE_PAST' })
@@ -4683,12 +4733,12 @@ describe('updateForOrg publishing rules', () => {
 
   it('rejects an update that would break the seats invariant (BR-010)', async () => {
     const created = await createForOrg(seed.publishedListingId, seed.orgId, body())
-    await expect(
-      updateForOrg(created.id, seed.orgId, { seatsTotal: 10 }),
-    ).rejects.toMatchObject({ code: 'SEATS_OUT_OF_RANGE' })
+    await expect(updateForOrg(created.id, seed.orgId, { seatsTotal: 10 })).rejects.toMatchObject({
+      code: 'SEATS_OUT_OF_RANGE',
+    })
   })
 
-  it('forbids updating another organization\'s batch', async () => {
+  it("forbids updating another organization's batch", async () => {
     await expect(
       updateForOrg(seed.publishedBatchId, seed.otherOrgId, { title: 'Hijacked' }),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' })
@@ -4767,7 +4817,10 @@ export async function updateForOrg(
   if (body.status === 'PUBLISHED') {
     const startDate = body.startDate ?? existing.startDate
     if (startDate.getTime() < Date.now()) {
-      throw new ConflictError('BATCH_START_DATE_PAST', 'A batch starting in the past cannot be published')
+      throw new ConflictError(
+        'BATCH_START_DATE_PAST',
+        'A batch starting in the past cannot be published',
+      )
     }
     if (!(await isPublished(existing.listingId))) {
       throw new ConflictError(
@@ -5144,10 +5197,14 @@ partnerInstitutesRouter.get('/', async (req, res) => {
   res.json(await institutes.listForOrg(await orgIdFor(req)))
 })
 
-partnerInstitutesRouter.get('/:listingId', validate({ params: listingIdParam }), async (req, res) => {
-  const { listingId } = validated<ListingIdParam>(req, 'params')
-  res.json(await institutes.getForOrg(listingId, await orgIdFor(req)))
-})
+partnerInstitutesRouter.get(
+  '/:listingId',
+  validate({ params: listingIdParam }),
+  async (req, res) => {
+    const { listingId } = validated<ListingIdParam>(req, 'params')
+    res.json(await institutes.getForOrg(listingId, await orgIdFor(req)))
+  },
+)
 
 partnerInstitutesRouter.patch(
   '/:listingId',
@@ -5217,8 +5274,8 @@ import { partnerBatchesRouter } from './modules/batches/batches.partner.routes.j
 ```
 
 ```ts
-  app.use('/api/v1/partner/listings', partnerInstitutesRouter)
-  app.use('/api/v1/partner/batches', partnerBatchesRouter)
+app.use('/api/v1/partner/listings', partnerInstitutesRouter)
+app.use('/api/v1/partner/batches', partnerBatchesRouter)
 ```
 
 - [ ] **Step 8: Run the tests to verify they pass**
@@ -5249,12 +5306,14 @@ git commit -m "feat(api): add partner listing and batch management with ownershi
 ### Task 15: Admin moderation endpoints
 
 **Files:**
+
 - Create: `apps/api/src/modules/listings/listings.admin.routes.ts`
 - Modify: `apps/api/src/modules/listings/listings.repository.ts`, `listings.service.ts`
 - Modify: `apps/api/src/server.ts`
 - Test: `apps/api/src/modules/listings/listings.admin.routes.test.ts`
 
 **Interfaces:**
+
 - Consumes: `requireAuth`, `requireAdmin` (Task 13); `publish` (Task 10); `adminListingQueueQuery`, `adminListingSummary` (Task 7).
 - Produces:
   - `adminListingsRouter` — mounted at `/api/v1/admin/listings`
@@ -5520,7 +5579,7 @@ import { adminListingsRouter } from './modules/listings/listings.admin.routes.js
 ```
 
 ```ts
-  app.use('/api/v1/admin/listings', adminListingsRouter)
+app.use('/api/v1/admin/listings', adminListingsRouter)
 ```
 
 - [ ] **Step 6: Run the test to verify it passes**
@@ -5554,6 +5613,7 @@ git commit -m "feat(api): add admin moderation queue and publish endpoint"
 ### Task 16: `packages/ui` and `apps/web` skeleton with the typed API client
 
 **Files:**
+
 - Create: `packages/ui/package.json`, `src/index.ts`, `src/styles.css`, `src/Badge.tsx`, `src/Card.tsx`
 - Create: `apps/web/package.json`, `tsconfig.json`, `eslint.config.js`, `next.config.ts`, `.env.local`, `.env.example`
 - Create: `apps/web/src/lib/api.ts`, `src/lib/format.ts`
@@ -5561,6 +5621,7 @@ git commit -m "feat(api): add admin moderation queue and publish endpoint"
 - Test: `apps/web/src/lib/format.test.ts`
 
 **Interfaces:**
+
 - Consumes: `@one/shared` contracts.
 - Produces:
   - `apiGet<T>(path: string, schema: ZodType<T>, init?: RequestInit)` → `Promise<T>`; throws `ApiError` with `{ status, code, message }`
@@ -5645,9 +5706,7 @@ export function Badge({ children }: { children: ReactNode }) {
 import type { ReactNode } from 'react'
 
 export function Card({ children }: { children: ReactNode }) {
-  return (
-    <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">{children}</div>
-  )
+  return <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">{children}</div>
 }
 ```
 
@@ -5860,11 +5919,7 @@ async function toApiError(response: Response): Promise<ApiError> {
   return new ApiError(response.status, 'UNKNOWN', `Request failed with ${response.status}`)
 }
 
-export async function apiGet<T>(
-  path: string,
-  schema: ZodType<T>,
-  init?: RequestInit,
-): Promise<T> {
+export async function apiGet<T>(path: string, schema: ZodType<T>, init?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
     ...init,
     headers: { accept: 'application/json', ...init?.headers },
@@ -5873,11 +5928,7 @@ export async function apiGet<T>(
   return schema.parse(await response.json())
 }
 
-export async function apiPost<T>(
-  path: string,
-  body: unknown,
-  schema: ZodType<T>,
-): Promise<T> {
+export async function apiPost<T>(path: string, body: unknown, schema: ZodType<T>): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/json' },
@@ -6019,7 +6070,8 @@ export default async function InstitutesPage({ searchParams }: { searchParams: S
                     ))}
                   </div>
                   <p className="pt-1 text-xs text-gray-500">
-                    {institute.batchCount} upcoming {institute.batchCount === 1 ? 'batch' : 'batches'}
+                    {institute.batchCount} upcoming{' '}
+                    {institute.batchCount === 1 ? 'batch' : 'batches'}
                   </p>
                 </Link>
               </Card>
@@ -6067,11 +6119,13 @@ git commit -m "feat(web): add public shell, typed API client and institutes inde
 ### Task 17: Institute detail page with SEO
 
 **Files:**
+
 - Create: `apps/web/src/app/institutes/[slug]/page.tsx`, `not-found.tsx`
 - Create: `apps/web/src/app/sitemap.ts`, `src/app/robots.ts`
 - Modify: `apps/web/src/lib/api.ts` (add `apiGetOptional`)
 
 **Interfaces:**
+
 - Consumes: `apiGet`, `formatFee`, `formatDateRange`, `instituteDetail`, `batchListResponse`.
 - Produces: `generateMetadata` per institute, JSON-LD `EducationalOrganization`, a `sitemap()` enumerating published institutes.
 
@@ -6292,11 +6346,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   let page = 1
   for (;;) {
-    const data = await apiGet(
-      `/api/v1/institutes?page=${page}&limit=50`,
-      instituteListResponse,
-      { next: { revalidate: 3600 } } as RequestInit,
-    )
+    const data = await apiGet(`/api/v1/institutes?page=${page}&limit=50`, instituteListResponse, {
+      next: { revalidate: 3600 },
+    } as RequestInit)
     for (const institute of data.items) {
       entries.push({
         url: `${SITE_URL}/institutes/${institute.slug}`,
@@ -6347,10 +6399,12 @@ git commit -m "feat(web): add institute detail page with metadata, JSON-LD and s
 ### Task 18: Enquiry form
 
 **Files:**
+
 - Create: `apps/web/src/app/institutes/[slug]/EnquiryForm.tsx`
 - Create: `apps/web/src/app/institutes/[slug]/actions.ts`
 
 **Interfaces:**
+
 - Consumes: `createEnquiryBody`, `enquiryCreatedResponse`, `apiPost`.
 - Produces: `submitEnquiry(prevState, formData)` server action returning `{ status: 'idle' | 'success' | 'error'; message?: string; fieldErrors?: Record<string, string[]> }`; `EnquiryForm` client component.
 
@@ -6561,11 +6615,13 @@ git commit -m "feat(web): add enquiry form with shared-schema validation"
 ### Task 19: `apps/partner` shell with Clerk authentication
 
 **Files:**
+
 - Create: `apps/partner/package.json`, `tsconfig.json`, `eslint.config.js`, `next.config.ts`, `postcss.config.mjs`, `.env.example`, `.env.local`
 - Create: `apps/partner/src/middleware.ts`, `src/lib/api.ts`
 - Create: `apps/partner/src/app/layout.tsx`, `src/app/globals.css`, `src/app/page.tsx`, `src/app/dashboard/page.tsx`
 
 **Interfaces:**
+
 - Consumes: `@one/shared` partner contracts, `@clerk/nextjs`.
 - Produces: `partnerApiGet<T>(path, schema)` and `partnerApiSend<T>(path, method, body, schema)`, both attaching the Clerk session token as a bearer header; a `/dashboard` route listing the active organization's listings.
 
@@ -6864,9 +6920,11 @@ git commit -m "feat(partner): add authenticated shell and listings dashboard"
 ### Task 20: Batch management in the partner app
 
 **Files:**
+
 - Create: `apps/partner/src/app/dashboard/[listingId]/page.tsx`, `BatchForm.tsx`, `actions.ts`
 
 **Interfaces:**
+
 - Consumes: `partnerApiGet`, `partnerApiSend`, `createBatchBody`, `updateBatchBody`, `partnerListingDetail`, `batchSummary`.
 - Produces: `createBatchAction(listingId, prevState, formData)`, `publishBatchAction(batchId)`, `submitListingAction(listingId)` server actions; the listing detail screen.
 
@@ -6905,9 +6963,7 @@ export async function createBatchAction(
     mode: String(formData.get('mode') ?? 'OFFLINE'),
     startDate: String(formData.get('startDate') ?? ''),
     ...(formData.get('endDate') ? { endDate: String(formData.get('endDate')) } : {}),
-    ...(formData.get('scheduleText')
-      ? { scheduleText: String(formData.get('scheduleText')) }
-      : {}),
+    ...(formData.get('scheduleText') ? { scheduleText: String(formData.get('scheduleText')) } : {}),
     seatsTotal: Number(formData.get('seatsTotal') ?? '0'),
     feeAmount: Math.round(feeRupees * 100),
     feeCurrency: 'INR',
@@ -7016,7 +7072,11 @@ export function BatchForm({ listingId }: { listingId: string }) {
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block space-y-1">
             <span className="text-sm font-medium">Batch title</span>
-            <input name="title" required className="w-full rounded-md border border-gray-300 px-3 py-2" />
+            <input
+              name="title"
+              required
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
+            />
             {state.fieldErrors?.title ? (
               <span className="text-xs text-red-600">{state.fieldErrors.title[0]}</span>
             ) : null}
@@ -7024,12 +7084,20 @@ export function BatchForm({ listingId }: { listingId: string }) {
 
           <label className="block space-y-1">
             <span className="text-sm font-medium">Exam</span>
-            <input name="exam" required className="w-full rounded-md border border-gray-300 px-3 py-2" />
+            <input
+              name="exam"
+              required
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
+            />
           </label>
 
           <label className="block space-y-1">
             <span className="text-sm font-medium">Mode</span>
-            <select name="mode" defaultValue="OFFLINE" className="w-full rounded-md border border-gray-300 px-3 py-2">
+            <select
+              name="mode"
+              defaultValue="OFFLINE"
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
+            >
               <option value="OFFLINE">Offline</option>
               <option value="ONLINE">Online</option>
               <option value="HYBRID">Hybrid</option>
@@ -7038,7 +7106,12 @@ export function BatchForm({ listingId }: { listingId: string }) {
 
           <label className="block space-y-1">
             <span className="text-sm font-medium">Start date</span>
-            <input name="startDate" type="date" required className="w-full rounded-md border border-gray-300 px-3 py-2" />
+            <input
+              name="startDate"
+              type="date"
+              required
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
+            />
             {state.fieldErrors?.startDate ? (
               <span className="text-xs text-red-600">{state.fieldErrors.startDate[0]}</span>
             ) : null}
@@ -7046,17 +7119,34 @@ export function BatchForm({ listingId }: { listingId: string }) {
 
           <label className="block space-y-1">
             <span className="text-sm font-medium">End date (optional)</span>
-            <input name="endDate" type="date" className="w-full rounded-md border border-gray-300 px-3 py-2" />
+            <input
+              name="endDate"
+              type="date"
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
+            />
           </label>
 
           <label className="block space-y-1">
             <span className="text-sm font-medium">Total seats</span>
-            <input name="seatsTotal" type="number" min={1} required className="w-full rounded-md border border-gray-300 px-3 py-2" />
+            <input
+              name="seatsTotal"
+              type="number"
+              min={1}
+              required
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
+            />
           </label>
 
           <label className="block space-y-1">
             <span className="text-sm font-medium">Fee (₹)</span>
-            <input name="feeRupees" type="number" min={0} step={1} required className="w-full rounded-md border border-gray-300 px-3 py-2" />
+            <input
+              name="feeRupees"
+              type="number"
+              min={0}
+              step={1}
+              required
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
+            />
             {state.fieldErrors?.feeAmount ? (
               <span className="text-xs text-red-600">{state.fieldErrors.feeAmount[0]}</span>
             ) : null}
@@ -7065,11 +7155,17 @@ export function BatchForm({ listingId }: { listingId: string }) {
 
         <label className="block space-y-1">
           <span className="text-sm font-medium">Schedule (optional)</span>
-          <input name="scheduleText" placeholder="Mon-Sat, 7:00-10:00" className="w-full rounded-md border border-gray-300 px-3 py-2" />
+          <input
+            name="scheduleText"
+            placeholder="Mon-Sat, 7:00-10:00"
+            className="w-full rounded-md border border-gray-300 px-3 py-2"
+          />
         </label>
 
         {state.message ? (
-          <p className={state.status === 'error' ? 'text-sm text-red-600' : 'text-sm text-green-700'}>
+          <p
+            className={state.status === 'error' ? 'text-sm text-red-600' : 'text-sm text-green-700'}
+          >
             {state.message}
           </p>
         ) : null}
@@ -7102,10 +7198,7 @@ type Params = Promise<{ listingId: string }>
 
 export default async function ListingDetailPage({ params }: { params: Params }) {
   const { listingId } = await params
-  const listing = await partnerApiGet(
-    `/api/v1/partner/listings/${listingId}`,
-    partnerListingDetail,
-  )
+  const listing = await partnerApiGet(`/api/v1/partner/listings/${listingId}`, partnerListingDetail)
 
   return (
     <section className="space-y-8">
@@ -7246,6 +7339,7 @@ git commit -m "feat(partner): add batch creation, publishing and listing submiss
 ### Task 21: Seed the documentation system
 
 **Files:**
+
 - Create: `CLAUDE.md`, `apps/api/CLAUDE.md`, `apps/web/CLAUDE.md`, `apps/partner/CLAUDE.md`, `packages/db/CLAUDE.md`
 - Create: `docs/README.md`, `docs/architecture.md`
 - Create: `docs/flows/institute-discovery.md`, `docs/flows/listing-lifecycle.md`
@@ -7256,6 +7350,7 @@ git commit -m "feat(partner): add batch creation, publishing and listing submiss
 - Create: `scripts/check-docs-freshness.ts`
 
 **Interfaces:**
+
 - Consumes: the implemented code, for accurate anchors.
 - Produces: `pnpm exec tsx scripts/check-docs-freshness.ts` exiting 0 when flows are current and printing warnings when stale.
 
@@ -7407,17 +7502,17 @@ The only workspace that talks to Postgres.
 Docs hold what git cannot: intent, rejected alternatives, and how a flow spans three apps.
 Git already records what changed and when — so nothing here duplicates a file-change log.
 
-| Path | What it holds | Read it when |
-|---|---|---|
-| `architecture.md` | The three apps, data flow, deploy topology | Orienting for the first time |
-| `flows/` | End-to-end flows with code anchors | Changing behaviour that crosses apps |
-| `domain/business-rules.md` | Numbered BR-### rules | Implementing or testing a rule |
-| `domain/glossary.md` | Exact meaning of Listing, Institute, Batch, Org | A term is ambiguous |
-| `decisions/` | ADRs: why, and what was rejected | Tempted to re-litigate a decision |
-| `api/openapi.json` | Generated API spec — never hand-edit | Checking the contract |
-| `runbooks/` | Local setup, migrations | Operating the system |
-| `work/` | Requests, bugs, and completed outcomes | Picking up or recording work |
-| `superpowers/specs/`, `superpowers/plans/` | Design specs and implementation plans | Starting a phase |
+| Path                                       | What it holds                                   | Read it when                         |
+| ------------------------------------------ | ----------------------------------------------- | ------------------------------------ |
+| `architecture.md`                          | The three apps, data flow, deploy topology      | Orienting for the first time         |
+| `flows/`                                   | End-to-end flows with code anchors              | Changing behaviour that crosses apps |
+| `domain/business-rules.md`                 | Numbered BR-### rules                           | Implementing or testing a rule       |
+| `domain/glossary.md`                       | Exact meaning of Listing, Institute, Batch, Org | A term is ambiguous                  |
+| `decisions/`                               | ADRs: why, and what was rejected                | Tempted to re-litigate a decision    |
+| `api/openapi.json`                         | Generated API spec — never hand-edit            | Checking the contract                |
+| `runbooks/`                                | Local setup, migrations                         | Operating the system                 |
+| `work/`                                    | Requests, bugs, and completed outcomes          | Picking up or recording work         |
+| `superpowers/specs/`, `superpowers/plans/` | Design specs and implementation plans           | Starting a phase                     |
 
 ## Keeping flows true
 
@@ -7545,14 +7640,14 @@ BR-002, BR-005, BR-009
 
 ## Failure modes
 
-| Condition | API response | What the user sees |
-|---|---|---|
-| Slug is DRAFT or unknown | 404 `NOT_FOUND` | `not-found.tsx` — "Institute not found" |
-| Slug was renamed before publication | 301 to canonical slug | Transparent redirect |
-| Enquiry phone not 10 digits | 400 `VALIDATION_FAILED` | Inline field error (caught client-side first) |
-| Batch id belongs to another listing | 400 `VALIDATION_FAILED` | Generic form error |
-| More than 10 enquiries in an hour | 429 `RATE_LIMITED` | "Too many requests. Please try again later." |
-| API unreachable | — | Next.js error boundary |
+| Condition                           | API response            | What the user sees                            |
+| ----------------------------------- | ----------------------- | --------------------------------------------- |
+| Slug is DRAFT or unknown            | 404 `NOT_FOUND`         | `not-found.tsx` — "Institute not found"       |
+| Slug was renamed before publication | 301 to canonical slug   | Transparent redirect                          |
+| Enquiry phone not 10 digits         | 400 `VALIDATION_FAILED` | Inline field error (caught client-side first) |
+| Batch id belongs to another listing | 400 `VALIDATION_FAILED` | Generic form error                            |
+| More than 10 enquiries in an hour   | 429 `RATE_LIMITED`      | "Too many requests. Please try again later."  |
+| API unreachable                     | —                       | Next.js error boundary                        |
 
 ## Related flows
 
@@ -7620,15 +7715,15 @@ BR-001, BR-002, BR-003, BR-004, BR-005, BR-010
 
 ## Failure modes
 
-| Condition | API response | What the partner sees |
-|---|---|---|
-| Listing owned by another org | 403 `FORBIDDEN` | "You do not have permission to change this listing." |
-| Clerk org not provisioned locally | 403 `FORBIDDEN` | "No organisation selected" card |
-| Submitting a non-DRAFT listing | 409 `INVALID_STATUS_TRANSITION` | "This listing cannot be submitted in its current state." |
-| Publishing a batch starting in the past | 409 `BATCH_START_DATE_PAST` | "A batch starting in the past cannot be published." |
+| Condition                                    | API response                     | What the partner sees                                            |
+| -------------------------------------------- | -------------------------------- | ---------------------------------------------------------------- |
+| Listing owned by another org                 | 403 `FORBIDDEN`                  | "You do not have permission to change this listing."             |
+| Clerk org not provisioned locally            | 403 `FORBIDDEN`                  | "No organisation selected" card                                  |
+| Submitting a non-DRAFT listing               | 409 `INVALID_STATUS_TRANSITION`  | "This listing cannot be submitted in its current state."         |
+| Publishing a batch starting in the past      | 409 `BATCH_START_DATE_PAST`      | "A batch starting in the past cannot be published."              |
 | Publishing a batch on an unpublished listing | 409 `BATCH_PARENT_NOT_PUBLISHED` | "Your listing must be published before you can publish a batch." |
-| seatsAvailable outside 0..seatsTotal | 409 `SEATS_OUT_OF_RANGE` | "Seats available must be between zero and the total seats." |
-| Non-admin attempting publish | 403 `FORBIDDEN` | Not reachable from the partner UI |
+| seatsAvailable outside 0..seatsTotal         | 409 `SEATS_OUT_OF_RANGE`         | "Seats available must be between zero and the total seats."      |
+| Non-admin attempting publish                 | 403 `FORBIDDEN`                  | Not reachable from the partner UI                                |
 
 ## Related flows
 
@@ -7992,10 +8087,12 @@ git commit -m "docs: add flow freshness detector and stamp verified commits"
 ### Task 22: End-to-end tests
 
 **Files:**
+
 - Create: `e2e/package.json`, `playwright.config.ts`, `tests/discovery.spec.ts`, `tests/moderation.spec.ts`
 - Modify: `pnpm-workspace.yaml` (add `e2e`), `.github/workflows/ci.yml`
 
 **Interfaces:**
+
 - Consumes: the running `@one/api` and `@one/web` apps, the seed data from Task 5.
 - Produces: `pnpm --filter @one/e2e test` running two Playwright specs.
 
@@ -8004,7 +8101,7 @@ git commit -m "docs: add flow freshness detector and stamp verified commits"
 Add `- 'e2e'` to `pnpm-workspace.yaml` packages, and add to the catalog:
 
 ```yaml
-  '@playwright/test': 1.57.0
+'@playwright/test': 1.57.0
 ```
 
 `e2e/package.json`:
@@ -8307,39 +8404,39 @@ loosening the assertion.
 Append a second job to `.github/workflows/ci.yml`:
 
 ```yaml
-  e2e:
-    runs-on: ubuntu-latest
-    needs: verify
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: one_academy
-          POSTGRES_PASSWORD: local_dev_only
-          POSTGRES_DB: one_academy_e2e
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd pg_isready --health-interval 10s
-          --health-timeout 5s --health-retries 10
-    env:
-      DATABASE_URL: postgresql://one_academy:local_dev_only@localhost:5432/one_academy_e2e
-      API_BASE_URL: http://localhost:4000
-      NODE_ENV: test
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with: { node-version: '22.16.0' }
-      - run: npm install -g pnpm@12.11.2
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @one/db db:generate
-      - run: pnpm --filter @one/db db:migrate:deploy
-      - run: pnpm --filter @one/e2e exec playwright install --with-deps chromium
-      - run: pnpm --filter @one/e2e test
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: playwright-report
-          path: e2e/playwright-report/
+e2e:
+  runs-on: ubuntu-latest
+  needs: verify
+  services:
+    postgres:
+      image: postgres:17
+      env:
+        POSTGRES_USER: one_academy
+        POSTGRES_PASSWORD: local_dev_only
+        POSTGRES_DB: one_academy_e2e
+      ports: ['5432:5432']
+      options: >-
+        --health-cmd pg_isready --health-interval 10s
+        --health-timeout 5s --health-retries 10
+  env:
+    DATABASE_URL: postgresql://one_academy:local_dev_only@localhost:5432/one_academy_e2e
+    API_BASE_URL: http://localhost:4000
+    NODE_ENV: test
+  steps:
+    - uses: actions/checkout@v5
+    - uses: actions/setup-node@v5
+      with: { node-version: '22.16.0' }
+    - run: npm install -g pnpm@12.11.2
+    - run: pnpm install --frozen-lockfile
+    - run: pnpm --filter @one/db db:generate
+    - run: pnpm --filter @one/db db:migrate:deploy
+    - run: pnpm --filter @one/e2e exec playwright install --with-deps chromium
+    - run: pnpm --filter @one/e2e test
+    - uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: playwright-report
+        path: e2e/playwright-report/
 ```
 
 - [ ] **Step 6: Final full verification**
@@ -8407,12 +8504,3 @@ before the task may be closed.
 ## Execution Handoff
 
 Plan complete and saved to `docs/superpowers/plans/2026-10-11-p0-foundation.md`.
-
-
-
-
-
-
-
-
-

@@ -1,0 +1,21 @@
+{
+  "name": "@one/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./prettier": "./prettier.json",
+    "./tsconfig.base": "./tsconfig.base.json",
+    "./tsconfig.node": "./tsconfig.node.json",
+    "./tsconfig.react": "./tsconfig.react.json",
+    "./eslint/base": "./eslint/base.js",
+    "./eslint/api": "./eslint/api.js",
+    "./eslint/next": "./eslint/next.js"
+  },
+  "scripts": {
+    "build": "echo no-op",
+    "lint": "echo no-op",
+    "typecheck": "echo no-op",
+    "test": "echo no-op"
+  }
+}

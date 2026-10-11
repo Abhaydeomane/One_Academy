@@ -15,11 +15,11 @@ own listing. Hostels and PGs become a second vertical later.
 
 This makes it a three-sided system from day one:
 
-| Side | Surface | Characteristics |
-|---|---|---|
+| Side     | Surface               | Characteristics                            |
+| -------- | --------------------- | ------------------------------------------ |
 | Consumer | Public discovery site | SEO-critical, mostly anonymous, read-heavy |
-| Partner | Institute dashboard | Authenticated, org-scoped, write-heavy |
-| Internal | Admin/moderation | Small, high-privilege |
+| Partner  | Institute dashboard   | Authenticated, org-scoped, write-heavy     |
+| Internal | Admin/moderation      | Small, high-privilege                      |
 
 Nearly all code will be written by AI agents, under the direction of a single person.
 Agents start each session without memory of prior sessions and may be swapped between
@@ -38,7 +38,7 @@ far more reliably than with documentation.
 1. One standard structure that survives agent and vendor changes.
 2. Cross-stack changes (API + UI + docs) land atomically in one commit.
 3. The API contract cannot silently drift between frontend and backend.
-4. Durable records of *why* decisions were made, not just what changed.
+4. Durable records of _why_ decisions were made, not just what changed.
 5. A second vertical (hostels/PG) is additive, not a migration.
 6. Independent deployment of each app.
 
@@ -55,15 +55,15 @@ far more reliably than with documentation.
 
 Each becomes an ADR in `docs/decisions/`.
 
-| # | Decision | Rationale | Rejected |
-|---|---|---|---|
-| 0001 | Single monorepo, three deployable apps | Atomic cross-stack commits; shared types type-checked in CI; docs change in the same PR as code | Three repos (docs and contracts drift, cross-stack change spans 3 PRs); 2 repos (docs still drift) |
-| 0002 | Separate `web` and `partner` Next.js apps | SEO pages avoid shipping dashboard JS and auth middleware; partner is a distinct product | Route groups in one app (couples bundles and caching) |
-| 0003 | Zod contracts in `packages/shared`, OpenAPI generated | Server validation and client types derive from one definition; drift structurally impossible | Hand-written OpenAPI (diverges from validator); tRPC (welds UI to backend, blocks third-party API consumers) |
-| 0004 | Thin shared listing core + typed vertical modules | Hostels become a new module, not a schema migration; filtered search stays type-safe | Polymorphic listings with JSONB attributes (loses type safety where search is the product); defer entirely (refactor would touch every table and endpoint) |
-| 0005 | Postgres + Prisma | A typed schema is the strongest available guard against agents inventing columns | Mongo (weak constraints); raw SQL (more agent surface for error) |
-| 0006 | Clerk for authentication and organizations | Session and org/role handling is the most likely place for an agent-introduced security hole | Better Auth / self-issued JWT (more security-sensitive code to own) |
-| 0007 | pnpm + Turborepo | pnpm's strict `node_modules` makes phantom dependencies impossible; Turborepo gives path-aware CI | npm/yarn workspaces (permit undeclared imports) |
+| #    | Decision                                              | Rationale                                                                                         | Rejected                                                                                                                                                   |
+| ---- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0001 | Single monorepo, three deployable apps                | Atomic cross-stack commits; shared types type-checked in CI; docs change in the same PR as code   | Three repos (docs and contracts drift, cross-stack change spans 3 PRs); 2 repos (docs still drift)                                                         |
+| 0002 | Separate `web` and `partner` Next.js apps             | SEO pages avoid shipping dashboard JS and auth middleware; partner is a distinct product          | Route groups in one app (couples bundles and caching)                                                                                                      |
+| 0003 | Zod contracts in `packages/shared`, OpenAPI generated | Server validation and client types derive from one definition; drift structurally impossible      | Hand-written OpenAPI (diverges from validator); tRPC (welds UI to backend, blocks third-party API consumers)                                               |
+| 0004 | Thin shared listing core + typed vertical modules     | Hostels become a new module, not a schema migration; filtered search stays type-safe              | Polymorphic listings with JSONB attributes (loses type safety where search is the product); defer entirely (refactor would touch every table and endpoint) |
+| 0005 | Postgres + Prisma                                     | A typed schema is the strongest available guard against agents inventing columns                  | Mongo (weak constraints); raw SQL (more agent surface for error)                                                                                           |
+| 0006 | Clerk for authentication and organizations            | Session and org/role handling is the most likely place for an agent-introduced security hole      | Better Auth / self-issued JWT (more security-sensitive code to own)                                                                                        |
+| 0007 | pnpm + Turborepo                                      | pnpm's strict `node_modules` makes phantom dependencies impossible; Turborepo gives path-aware CI | npm/yarn workspaces (permit undeclared imports)                                                                                                            |
 
 ## 5. Repository layout
 
@@ -105,15 +105,15 @@ cosmetic and optional.
 Six `package.json` files. The root declares tooling only — no application dependencies —
 plus `"packageManager": "pnpm@12.11.2"` and `"engines": { "node": ">=22.16" }`.
 
-| Workspace | Dependencies |
-|---|---|
-| root | turbo, typescript, eslint, typescript-eslint, eslint-plugin-boundaries, prettier, husky, lint-staged |
-| `apps/web` | next, react, `@one/ui`, `@one/shared` |
-| `apps/partner` | next, react, react-hook-form, @clerk/nextjs, `@one/ui`, `@one/shared` |
-| `apps/api` | express, pino, zod, @clerk/express, `@one/shared`, `@one/db` |
-| `packages/shared` | zod |
-| `packages/db` | prisma, @prisma/client |
-| `packages/ui` | react (peer), tailwindcss |
+| Workspace         | Dependencies                                                                                                        |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------- |
+| root              | turbo, typescript, eslint, typescript-eslint, @eslint/js, eslint-config-prettier, prettier, husky, lint-staged, tsx |
+| `apps/web`        | next, react, `@one/ui`, `@one/shared`                                                                               |
+| `apps/partner`    | next, react, react-hook-form, @clerk/nextjs, `@one/ui`, `@one/shared`                                               |
+| `apps/api`        | express, pino, zod, @clerk/express, `@one/shared`, `@one/db`                                                        |
+| `packages/shared` | zod                                                                                                                 |
+| `packages/db`     | prisma, @prisma/client                                                                                              |
+| `packages/ui`     | react (peer), tailwindcss                                                                                           |
 
 Every workspace is named under the `@one/` scope — `@one/web`, `@one/partner`,
 `@one/api`, `@one/shared`, `@one/ui`, `@one/db`, `@one/config` — so Turborepo filters and
@@ -168,9 +168,16 @@ latest" without reading this:
   error middleware automatically, so R6 needs no `asyncHandler` wrapper. Express 4
   examples found online will add one; it is unnecessary and should be rejected in review.
 
-ESLint 10.12.0, typescript-eslint 8.71.1 (peer `eslint: ^10`) and
-eslint-plugin-boundaries 7.2.0 (peer `eslint: >=6`) are mutually compatible. ESLint 10 is
-flat-config only; `packages/config` ships flat config, and no `.eslintrc` may exist.
+ESLint 10.12.0 and typescript-eslint 8.71.1 (peer `eslint: ^10`) are compatible. ESLint 10
+is flat-config only; `packages/config` ships flat config, and no `.eslintrc` may exist.
+
+Two further notes recorded during setup:
+
+- **pnpm 12 blocks post-install build scripts** and records approvals as an `allowBuilds`
+  map in `pnpm-workspace.yaml` — not the older `onlyBuiltDependencies` array. Manage it
+  with `pnpm approve-builds <pkg> -y` rather than hand-editing.
+- **Turborepo writes `AGENTS.md`** itself when it detects an agent, and re-adds it if
+  removed. It stays committed; opt out with `"agentGuidance": false` in `turbo.json`.
 
 ### Standard scripts
 
@@ -178,13 +185,13 @@ Every workspace exposes exactly these five, with identical names. This uniformit
 load-bearing: any agent in any workspace knows the command without exploring, and
 Turborepo depends on it.
 
-| Script | Meaning |
-|---|---|
-| `dev` | run in watch mode |
-| `build` | produce the deployable artifact |
-| `lint` | eslint, zero warnings tolerated |
-| `typecheck` | `tsc --noEmit` |
-| `test` | that workspace's tests |
+| Script      | Meaning                         |
+| ----------- | ------------------------------- |
+| `dev`       | run in watch mode               |
+| `build`     | produce the deployable artifact |
+| `lint`      | eslint, zero warnings tolerated |
+| `typecheck` | `tsc --noEmit`                  |
+| `test`      | that workspace's tests          |
 
 Root adds `verify` = `turbo lint typecheck test build`. **`pnpm verify` green is the
 definition of a finished change.**
@@ -226,19 +233,35 @@ exists in the database schema (§7) but gets no endpoints until P2.
 
 ### Architectural rules
 
-These are enforced by `eslint-plugin-boundaries`, not by documentation alone.
+These are enforced by ESLint in `packages/config/eslint/api.js`, not by documentation
+alone.
 
-| # | Rule | Enforcement |
-|---|---|---|
-| R1 | Routes must not import Prisma or `@one/db` | eslint boundary |
-| R2 | Services must not reference `req`, `res`, or HTTP status codes | eslint restricted-imports + review |
-| R3 | Only `*.repository.ts` may import the Prisma client | eslint boundary |
-| R4 | Cross-module access goes through the other module's **service** — never its repository, never its tables | eslint boundary |
-| R5 | Every route input is validated by a Zod schema from `@one/shared` | integration test asserts 400 on malformed input |
-| R6 | Errors are thrown as `AppError` subclasses; only `errorHandler` maps to HTTP | eslint restricted-syntax on `res.status(5..)` |
+| #   | Rule                                                                                                     | Enforcement                                                                    |
+| --- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| R1  | Routes must not import Prisma or `@one/db`                                                               | `no-restricted-imports` paths + `*.repository*` patterns                       |
+| R2  | Services and repositories must not import `express`                                                      | `no-restricted-imports` paths                                                  |
+| R3  | Only `*.repository.ts` may import `@one/db`                                                              | `no-restricted-imports`, re-allowed for that glob                              |
+| R4  | Cross-module access goes through the other module's **service** — never its repository, never its tables | `no-restricted-imports` patterns on `../*/*`                                   |
+| R5  | Every route input is validated by a Zod schema from `@one/shared`                                        | `validated()` throws if `validate()` was omitted; integration test asserts 400 |
+| R6  | Errors are thrown as `AppError` subclasses; only `errorHandler` maps to HTTP                             | `no-restricted-syntax` on `res.status(5xx)`                                    |
 
 R4 is the rule that makes single-module context sufficient, and the one most likely to
 erode without mechanical enforcement.
+
+Within a module, siblings are imported as `'./x.service.js'`. Any import beginning `'../'`
+therefore crosses a module boundary — which is what makes path patterns a complete
+expression of R4, without a dedicated boundaries plugin.
+
+**`eslint-plugin-boundaries` was evaluated and dropped** (ADR 0008). Version 7 deprecated
+the `element-types`/`rules` API in favour of `dependencies`/`policies`, and its
+`default: 'disallow'` stance requires explicitly allowing every external package before it
+stops false-positiving. What it adds over path patterns here is marginal, since allowing
+cross-module _service_ calls is the design's intent. Fewer moving parts is worth more than
+a declarative graph an agent has to re-learn.
+
+**`scripts/verify-lint-guardrails.sh` guards the guard.** It lints five deliberate
+violations plus two legal files and asserts each verdict, so a config refactor that
+silently disables R1–R4 fails CI instead of passing unnoticed.
 
 ### Conventions
 
@@ -311,18 +334,18 @@ enough to be the only path.
 Numbered, and referenced by ID from tests and from the single permitted code comment.
 `grep BR-003` returns the rule, its test, and its implementation.
 
-| ID | Rule |
-|---|---|
-| BR-001 | A Listing transitions to PUBLISHED only by a global ADMIN |
+| ID     | Rule                                                                        |
+| ------ | --------------------------------------------------------------------------- |
+| BR-001 | A Listing transitions to PUBLISHED only by a global ADMIN                   |
 | BR-002 | A PUBLISHED Listing's slug is immutable; a change creates a ListingRedirect |
-| BR-003 | A Batch cannot be PUBLISHED with a `startDate` in the past |
-| BR-004 | A Batch cannot be PUBLISHED unless its parent Listing is PUBLISHED |
-| BR-005 | Monetary values are integer minor units with an explicit currency code |
-| BR-006 | Reviews are PENDING until moderated |
-| BR-007 | Enquiries are readable only by the owning Organization and global ADMINs |
-| BR-008 | Comparison accepts 2–4 listings, all of the same vertical |
-| BR-009 | Only PUBLISHED listings appear in public search or detail routes |
-| BR-010 | `seatsAvailable` is always between 0 and `seatsTotal` inclusive |
+| BR-003 | A Batch cannot be PUBLISHED with a `startDate` in the past                  |
+| BR-004 | A Batch cannot be PUBLISHED unless its parent Listing is PUBLISHED          |
+| BR-005 | Monetary values are integer minor units with an explicit currency code      |
+| BR-006 | Reviews are PENDING until moderated                                         |
+| BR-007 | Enquiries are readable only by the owning Organization and global ADMINs    |
+| BR-008 | Comparison accepts 2–4 listings, all of the same vertical                   |
+| BR-009 | Only PUBLISHED listings appear in public search or detail routes            |
+| BR-010 | `seatsAvailable` is always between 0 and `seatsTotal` inclusive             |
 
 ## 9. API contract
 
@@ -364,13 +387,16 @@ generated spec needs.
 ### P0 endpoints
 
 Public:
+
 ```
 GET  /api/v1/institutes                    list, filter, paginate
 GET  /api/v1/institutes/:slug              detail
 GET  /api/v1/institutes/:slug/batches      published batches
 POST /api/v1/enquiries                     create lead (10 per hour per IP)
 ```
+
 Partner (authed, org-scoped):
+
 ```
 GET   /api/v1/partner/listings
 PATCH /api/v1/partner/listings/:id
@@ -378,7 +404,9 @@ POST  /api/v1/partner/listings/:id/batches
 PATCH /api/v1/partner/batches/:id
 POST  /api/v1/partner/listings/:id/submit        DRAFT → PENDING_REVIEW
 ```
+
 Admin:
+
 ```
 GET  /api/v1/admin/listings?status=PENDING_REVIEW
 POST /api/v1/admin/listings/:id/publish          BR-001
@@ -426,29 +454,36 @@ docs/
 
 Fixed, so agents update them as reliably as they read them.
 
-~~~markdown
+```markdown
 # Flow: <name>
+
 Last verified against commit: <sha>
 
 ## Purpose
+
 ## Actors and entry points
+
 ## Sequence
+
 apps/web/app/institutes/[slug]/page.tsx
-  → GET /api/v1/institutes/:slug
-  → institutes.service.getBySlug()
-  → institutes.repository: Listing ⋈ InstituteProfile ⋈ Batch
+→ GET /api/v1/institutes/:slug
+→ institutes.service.getBySlug()
+→ institutes.repository: Listing ⋈ InstituteProfile ⋈ Batch
 
 ## Diagram
+
 A mermaid sequence or flowchart block.
 
 ## Business rules invoked
+
 BR-002, BR-009
 
 ## Failure modes
+
 | Condition | API response | What the user sees |
 
 ## Related flows
-~~~
+```
 
 The code anchors and the verified-sha line enable a **drift detector**:
 `scripts/check-docs-freshness.ts` reads each flow's anchors and compares
@@ -474,10 +509,15 @@ title: Add exam-category filter to institute search
 status: todo | in-progress | done
 created: 2026-10-11
 ---
+
 ## What I want
+
 ## Why
+
 ## Acceptance criteria
+
 - [ ] …
+
 ## Constraints
 ```
 
@@ -492,6 +532,7 @@ shipped, PR link, what was learned, follow-ups. No file lists.
 ### Layered `CLAUDE.md`
 
 Root — deliberately short, because agents read short files:
+
 1. What this is (5 lines) and the three apps.
 2. The five standard commands.
 3. The non-negotiable rules (R1–R6, contract-first, money as minor units).
@@ -499,6 +540,7 @@ Root — deliberately short, because agents read short files:
 5. The definition of done.
 
 Per-workspace adds recipes:
+
 - `apps/api/CLAUDE.md` — ordered steps to add a module; where contracts go.
 - `apps/web/CLAUDE.md` — server vs client components, data fetching, SEO requirements.
 - `apps/partner/CLAUDE.md` — Clerk org scoping, how authorization is asserted.
@@ -524,26 +566,26 @@ ESLint, TypeScript, or CI. `CLAUDE.md` should mostly point at checks that fail.
 
 **CI** (`.github/workflows/ci.yml`), path-filtered per workspace via Turborepo:
 
-| Job | Fails when |
-|---|---|
-| lint | any eslint error or warning |
-| typecheck | any TS error |
-| unit | a service test fails |
-| integration | an endpoint test fails against real Postgres |
-| build | any app fails to build |
-| openapi-fresh | regenerated `openapi.json` differs from committed |
-| prisma-drift | schema does not match the migration history |
-| docs-fresh | a flow doc's anchors moved past its verified sha (warning in P0) |
+| Job           | Fails when                                                       |
+| ------------- | ---------------------------------------------------------------- |
+| lint          | any eslint error or warning                                      |
+| typecheck     | any TS error                                                     |
+| unit          | a service test fails                                             |
+| integration   | an endpoint test fails against real Postgres                     |
+| build         | any app fails to build                                           |
+| openapi-fresh | regenerated `openapi.json` differs from committed                |
+| prisma-drift  | schema does not match the migration history                      |
+| docs-fresh    | a flow doc's anchors moved past its verified sha (warning in P0) |
 
 Branch protection on `main` requires all jobs except `docs-fresh`.
 
 ### Testing strategy
 
-| Layer | Scope | Requirement |
-|---|---|---|
-| Unit | Services, business rules | One test per BR ID, named with the ID |
-| Integration | Every endpoint, real Postgres | Required for every route; covers authz and status filtering |
-| E2E | Playwright, two paths only | search → detail → enquiry; partner creates batch → appears publicly |
+| Layer       | Scope                         | Requirement                                                         |
+| ----------- | ----------------------------- | ------------------------------------------------------------------- |
+| Unit        | Services, business rules      | One test per BR ID, named with the ID                               |
+| Integration | Every endpoint, real Postgres | Required for every route; covers authz and status filtering         |
+| E2E         | Playwright, two paths only    | search → detail → enquiry; partner creates batch → appears publicly |
 
 **The database is never mocked.** Integration tests run against a real Postgres service
 container. The mistakes agents actually make — wrong joins, missed status filters,
@@ -558,12 +600,12 @@ hand-written.
 
 ## 13. Deployment
 
-| App | Host | Configuration |
-|---|---|---|
-| `apps/web` | Vercel | Root directory `apps/web`; ignored build step `git diff --quiet HEAD^ HEAD -- apps/web packages/ui packages/shared` |
-| `apps/partner` | Vercel | Root directory `apps/partner`, same pattern |
-| `apps/api` | Render | Root directory `apps/api`; `pnpm install --filter @one/api...` |
-| Postgres | Deferred | Local only for now; see below |
+| App            | Host     | Configuration                                                                                                       |
+| -------------- | -------- | ------------------------------------------------------------------------------------------------------------------- |
+| `apps/web`     | Vercel   | Root directory `apps/web`; ignored build step `git diff --quiet HEAD^ HEAD -- apps/web packages/ui packages/shared` |
+| `apps/partner` | Vercel   | Root directory `apps/partner`, same pattern                                                                         |
+| `apps/api`     | Render   | Root directory `apps/api`; `pnpm install --filter @one/api...`                                                      |
+| Postgres       | Deferred | Local only for now; see below                                                                                       |
 
 Hosting is **not yet chosen** and does not block M1–M7. The table above is the intended
 shape, not a commitment.
@@ -577,11 +619,11 @@ never automatically at boot.
 
 Provisioned and verified on 2026-10-11:
 
-| Component | Version | Notes |
-|---|---|---|
-| Node | 22.16.0 | via nvm |
-| pnpm | 12.11.2 | installed globally via npm; corepack 0.36 is incompatible with Node 22.16 and must not be used |
-| Postgres | 17.11 | Homebrew `postgresql@17`, running as a `brew services` daemon on port 5432 |
+| Component | Version | Notes                                                                                          |
+| --------- | ------- | ---------------------------------------------------------------------------------------------- |
+| Node      | 22.16.0 | via nvm                                                                                        |
+| pnpm      | 12.11.2 | installed globally via npm; corepack 0.36 is incompatible with Node 22.16 and must not be used |
+| Postgres  | 17.11   | Homebrew `postgresql@17`, running as a `brew services` daemon on port 5432                     |
 
 Two databases owned by a non-superuser role `one_academy`, mirroring the production shape
 so the connection string format never changes:
@@ -607,16 +649,16 @@ One end-to-end slice proving every layer: **a public institute detail page, and 
 creating a batch that appears on it.** That exercises both frontends, the API, Clerk auth,
 the moderation state machine, and the contract.
 
-| M | Deliverable | Done when |
-|---|---|---|
-| M1 | Workspace and tooling | `pnpm verify` green on an empty skeleton; eslint boundary rules reject a deliberate R1 violation; CI runs on PR |
-| M2 | `packages/db` | Core + institute schema migrated; seed creates 10 institutes, 3 cities, 20 batches; drift check green |
-| M3 | `packages/shared` | Contracts for all §9 endpoints; error codes; `gen:openapi` produces a valid spec |
-| M4 | `apps/api` | All §9 endpoints implemented; integration tests pass against real Postgres; BR-001–005, BR-007, BR-009, BR-010 unit-tested (BR-006 lands with reviews in P2, BR-008 with comparison in P1) |
-| M5 | `apps/web` | Institute list and detail pages render from the API; ISR configured; metadata, sitemap, JSON-LD present |
-| M6 | `apps/partner` | Clerk sign-in, org scoping enforced, create-batch screen writes through the API |
-| M7 | `docs/` | README, architecture, 2 flow docs with anchors, ADRs 0001–0007, business-rules, work templates, runbooks |
-| M8 | Deploys — **deferred** | Hosting undecided (§17). P0 completes without it; all three apps run locally against local Postgres |
+| M   | Deliverable            | Done when                                                                                                                                                                                  |
+| --- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| M1  | Workspace and tooling  | `pnpm verify` green on an empty skeleton; eslint boundary rules reject a deliberate R1 violation; CI runs on PR                                                                            |
+| M2  | `packages/db`          | Core + institute schema migrated; seed creates 10 institutes, 3 cities, 20 batches; drift check green                                                                                      |
+| M3  | `packages/shared`      | Contracts for all §9 endpoints; error codes; `gen:openapi` produces a valid spec                                                                                                           |
+| M4  | `apps/api`             | All §9 endpoints implemented; integration tests pass against real Postgres; BR-001–005, BR-007, BR-009, BR-010 unit-tested (BR-006 lands with reviews in P2, BR-008 with comparison in P1) |
+| M5  | `apps/web`             | Institute list and detail pages render from the API; ISR configured; metadata, sitemap, JSON-LD present                                                                                    |
+| M6  | `apps/partner`         | Clerk sign-in, org scoping enforced, create-batch screen writes through the API                                                                                                            |
+| M7  | `docs/`                | README, architecture, 2 flow docs with anchors, ADRs 0001–0007, business-rules, work templates, runbooks                                                                                   |
+| M8  | Deploys — **deferred** | Hosting undecided (§17). P0 completes without it; all three apps run locally against local Postgres                                                                                        |
 
 ### P0 acceptance
 
@@ -627,23 +669,23 @@ pull request, every flow doc current.
 
 ## 15. Risks
 
-| Risk | Mitigation |
-|---|---|
-| Clerk webhooks drop, mirrors drift | `scripts/reconcile-clerk.ts`, run on a schedule and after incidents |
-| Docs freshness check produces false positives and gets ignored | Warning-only in P0; promote to blocking only once the signal is trusted |
-| Agents bypass R4 in ways eslint cannot see | Integration tests assert org scoping; code review on cross-module changes |
-| Slug changes break SEO | BR-002 plus the redirect table, enforced in the service layer |
-| Scope creep from P0 into P1 search features | §3 non-goals are explicit; new asks become `REQ-` files, not P0 additions |
-| Vercel/Render monorepo configuration friction | Accepted; one-time cost, documented in the deploy runbook |
+| Risk                                                           | Mitigation                                                                |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Clerk webhooks drop, mirrors drift                             | `scripts/reconcile-clerk.ts`, run on a schedule and after incidents       |
+| Docs freshness check produces false positives and gets ignored | Warning-only in P0; promote to blocking only once the signal is trusted   |
+| Agents bypass R4 in ways eslint cannot see                     | Integration tests assert org scoping; code review on cross-module changes |
+| Slug changes break SEO                                         | BR-002 plus the redirect table, enforced in the service layer             |
+| Scope creep from P0 into P1 search features                    | §3 non-goals are explicit; new asks become `REQ-` files, not P0 additions |
+| Vercel/Render monorepo configuration friction                  | Accepted; one-time cost, documented in the deploy runbook                 |
 
 ## 16. Roadmap beyond P0
 
-| Phase | Scope |
-|---|---|
-| P1 | Consumer discovery: search, filters, city and exam landing pages, comparison, reviews, SEO depth |
-| P2 | Partner portal and admin: claim-and-verify, media upload, moderation queue, lead inbox, analytics |
-| P3 | Leads → admissions → payments |
-| P4 | Hostels/PG vertical via the §7 seam |
+| Phase | Scope                                                                                             |
+| ----- | ------------------------------------------------------------------------------------------------- |
+| P1    | Consumer discovery: search, filters, city and exam landing pages, comparison, reviews, SEO depth  |
+| P2    | Partner portal and admin: claim-and-verify, media upload, moderation queue, lead inbox, analytics |
+| P3    | Leads → admissions → payments                                                                     |
+| P4    | Hostels/PG vertical via the §7 seam                                                               |
 
 Each phase gets its own spec, implementation plan, and cycle.
 
