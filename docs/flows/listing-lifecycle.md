@@ -1,6 +1,6 @@
 # Flow: Listing lifecycle
 
-Last verified against commit: REPLACE_WITH_HEAD_SHA
+Last verified against commit: 60ae3d9244518076b7c76a5bed0040cee130f1af
 
 ## Purpose
 
