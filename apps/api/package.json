@@ -1,0 +1,35 @@
+{
+  "name": "@one/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@clerk/express": "catalog:",
+    "@one/db": "workspace:*",
+    "@one/shared": "workspace:*",
+    "express": "catalog:",
+    "express-rate-limit": "catalog:",
+    "pino": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@one/config": "workspace:*",
+    "@types/express": "catalog:",
+    "@types/express-serve-static-core": "catalog:",
+    "@types/node": "catalog:",
+    "@types/supertest": "catalog:",
+    "pino-pretty": "catalog:",
+    "supertest": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
