@@ -1,7 +1,10 @@
+import { clerkMiddleware } from '@clerk/express'
 import express, { type Express } from 'express'
 import { config } from './config/index.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import { requestId } from './middleware/requestId.js'
+import { accountsRouter } from './modules/accounts/accounts.routes.js'
+import { enquiriesRouter } from './modules/enquiries/enquiries.routes.js'
 import { institutesRouter } from './modules/institutes/institutes.routes.js'
 
 // Assembly only. Business logic belongs in a module service.
@@ -11,7 +14,13 @@ export function createServer(): Express {
   app.disable('x-powered-by')
   app.use(requestId)
 
+  // Webhooks are mounted before the JSON parser: signature verification needs
+  // the raw bytes that were signed.
+  app.use('/api/v1/webhooks', accountsRouter)
+
   app.use(express.json({ limit: '1mb' }))
+
+  if (config.clerkSecretKey) app.use(clerkMiddleware())
 
   app.use((req, res, next) => {
     const origin = req.get('origin')
@@ -33,6 +42,7 @@ export function createServer(): Express {
   })
 
   app.use('/api/v1/institutes', institutesRouter)
+  app.use('/api/v1/enquiries', enquiriesRouter)
 
   app.use(errorHandler)
   return app

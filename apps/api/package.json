@@ -18,6 +18,7 @@
     "express": "catalog:",
     "express-rate-limit": "catalog:",
     "pino": "catalog:",
+    "svix": "2.8.0",
     "zod": "catalog:"
   },
   "devDependencies": {
