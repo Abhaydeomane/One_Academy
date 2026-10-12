@@ -48,3 +48,35 @@ exercise the real authorization logic without depending on live Clerk sessions. 
 the one deliberate test seam in the API; never rely on it elsewhere.
 
 The enquiry rate limit is raised under test so repeated suite runs are not throttled.
+
+## One documented exception: the search query reads Batch
+
+`institutes.search.repository.ts` reads the `Batch` table directly, which the batches
+module would normally own. Filtering and sorting on a joined aggregate cannot be composed
+across two services — the aggregate has to exist inside the query that orders and
+paginates, because you cannot sort by a value you fetch afterwards.
+
+This is the only such exception. **If a second query needs the same thing, do not add
+another one**: denormalise `minFeeAmount` / `maxFeeAmount` / `publishedBatchCount` onto
+`Listing` with triggers, the same mechanism `searchVector` uses (ADR 0011). That was
+considered during P1a and rejected as premature for a query shape appearing once.
+
+The single-listing case goes through `batches.service.feeSummaryForListing` and respects
+the boundary normally.
+
+## The one hand-written SQL file
+
+`institutes.search.repository.ts` holds all three raw queries: matching, exam facets, mode
+facets. It is named `*.repository.ts` so the R1/R3 lint rule permits its `@one/db` import
+and keeps rejecting that import everywhere else.
+
+- **Every value goes through `Prisma.sql` interpolation**, which parameterises it. Never
+  build a fragment by concatenating a string that came from a request. A test submits SQL
+  metacharacters as a search term and asserts the tables survive.
+- **`count()` and `count(*) OVER ()` return `bigint`.** Convert with `Number()` before the
+  value reaches a Zod schema, or validation fails with a type error that reads as
+  unrelated.
+- **Fee filtering is an `EXISTS` over individual batch rows**, never a comparison against
+  the min/max aggregate. The aggregate tests whether a listing's fee _interval_ overlaps
+  the range, which is a different question: a listing with batches at ₹25,000 and
+  ₹1,00,000 would match a ₹40,000–₹50,000 filter despite having nothing in that band.

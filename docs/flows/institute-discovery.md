@@ -18,16 +18,25 @@ This is the acquisition path, so every step is cacheable, indexable and mobile-f
 
 ```
 apps/web/src/app/institutes/page.tsx
+  → apps/web/src/app/institutes/SearchForm.tsx            GET form; the URL is the state
+  → apps/web/src/app/institutes/FilterRail.tsx            chips carry facet counts
   → apps/web/src/lib/api.ts            apiGet(listInstitutesQuery → instituteListResponse)
   → GET /api/v1/institutes
   → apps/api/src/modules/institutes/institutes.routes.ts
-  → apps/api/src/modules/institutes/institutes.service.ts        listPublished()
-  → apps/api/src/modules/institutes/institutes.repository.ts     status=PUBLISHED (BR-009)
-  → apps/api/src/modules/batches/batches.repository.ts           published batch counts
+  → apps/api/src/modules/institutes/institutes.service.ts         resolveSort, order preserved
+  → apps/api/src/modules/institutes/institutes.search.repository.ts
+                                       tsvector match, ts_rank, fee aggregate, facets
+  → apps/api/src/modules/institutes/institutes.repository.ts      typed projection by id
 ```
 
-Filters render as a chip rail in `apps/web/src/app/institutes/FilterRail.tsx`; each chip is
-a link that rewrites the query string, so filtering needs no client JavaScript.
+Search and filtering need no client JavaScript: the box is a `GET` form and every chip is a
+link that rewrites the query string (ADR 0012). The raw query selects and orders the ids;
+Prisma then projects those rows through the typed `SELECT`, and the service restores the
+rank order because `IN` does not preserve it.
+
+Free text matches institute name (weight A), exam labels (B), locality and city (C) and
+the description (D), via a trigger-maintained `tsvector` (ADR 0011). Facet counts omit
+their own filter, so selecting JEE still reports NEET's count.
 
 **Detail**
 
@@ -77,15 +86,19 @@ BR-002, BR-005, BR-009
 
 ## Failure modes
 
-| Condition                                        | API response              | What the user sees                                 |
-| ------------------------------------------------ | ------------------------- | -------------------------------------------------- |
-| Slug is DRAFT or unknown                         | 404 `NOT_FOUND`           | `not-found.tsx` — "Institute not found"            |
-| Slug was renamed before publication              | 301 to the canonical slug | Transparent redirect                               |
-| Phone is not 10 digits                           | 400 `VALIDATION_FAILED`   | Inline field error, caught client-side first       |
-| `batchId` belongs to another listing             | 400 `VALIDATION_FAILED`   | Generic form error                                 |
-| More than 10 enquiries in an hour from one IP    | 429 `RATE_LIMITED`        | "Too many requests. Please try again later."       |
-| Listing unpublished between page load and submit | 404 `NOT_FOUND`           | "This institute is no longer accepting enquiries." |
-| API unreachable                                  | —                         | Next.js error boundary                             |
+| Condition                                        | API response                            | What the user sees                                                  |
+| ------------------------------------------------ | --------------------------------------- | ------------------------------------------------------------------- |
+| Slug is DRAFT or unknown                         | 404 `NOT_FOUND`                         | `not-found.tsx` — "Institute not found"                             |
+| Slug was renamed before publication              | 301 to the canonical slug               | Transparent redirect                                                |
+| Phone is not 10 digits                           | 400 `VALIDATION_FAILED`                 | Inline field error, caught client-side first                        |
+| `batchId` belongs to another listing             | 400 `VALIDATION_FAILED`                 | Generic form error                                                  |
+| More than 10 enquiries in an hour from one IP    | 429 `RATE_LIMITED`                      | "Too many requests. Please try again later."                        |
+| Listing unpublished between page load and submit | 404 `NOT_FOUND`                         | "This institute is no longer accepting enquiries."                  |
+| API unreachable                                  | —                                       | Next.js error boundary                                              |
+| Free-text query matches nothing                  | 200, empty list and empty facets        | "No institutes match …" plus an offer to clear the narrowing filter |
+| Query is a near-miss spelling                    | 200, empty list                         | Nothing — Postgres full-text has no typo tolerance (ADR 0010)       |
+| `feeMin` greater than `feeMax`                   | 400 `VALIDATION_FAILED`                 | Unreachable from the UI, which only emits preset buckets            |
+| A filter combination has no results              | 200, empty list, facets still populated | Counts on the other chips show where results do exist               |
 
 ## Related flows
 

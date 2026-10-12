@@ -3,6 +3,12 @@ import type { ZodType } from 'zod'
 
 const BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:4000'
 
+/// How long a public API response stays cached, in seconds. Configurable
+/// because the end-to-end suite seeds different data behind the same URLs, so
+/// any caching there makes assertions depend on run order. Set to 0 in
+/// e2e/playwright.config.ts.
+const DEFAULT_TTL = Number(process.env.API_CACHE_TTL ?? '300')
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -28,7 +34,11 @@ async function toApiError(response: Response): Promise<ApiError> {
 
 // Every response is parsed with the shared schema, so a contract violation
 // fails loudly here instead of surfacing as `undefined` inside a component.
-export async function apiGet<T>(path: string, schema: ZodType<T>, revalidate = 300): Promise<T> {
+export async function apiGet<T>(
+  path: string,
+  schema: ZodType<T>,
+  revalidate = DEFAULT_TTL,
+): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
     headers: { accept: 'application/json' },
     next: { revalidate },
@@ -40,7 +50,7 @@ export async function apiGet<T>(path: string, schema: ZodType<T>, revalidate = 3
 export async function apiGetOptional<T>(
   path: string,
   schema: ZodType<T>,
-  revalidate = 300,
+  revalidate = DEFAULT_TTL,
 ): Promise<T | null> {
   try {
     return await apiGet(path, schema, revalidate)

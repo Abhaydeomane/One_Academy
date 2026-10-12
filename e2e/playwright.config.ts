@@ -45,6 +45,9 @@ export default defineConfig({
         PORT: '3100',
         API_BASE_URL: 'http://localhost:4100',
         SITE_URL: 'http://localhost:3100',
+        // Every spec seeds different data behind the same URLs, so any
+        // response caching would make assertions depend on run order.
+        API_CACHE_TTL: '0',
       },
     },
   ],
