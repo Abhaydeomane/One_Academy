@@ -91,6 +91,13 @@ export async function listPublished(
   return { rows, total }
 }
 
+/// Projects rows for ids the search query already selected and ordered. Keeps
+/// the typed SELECT, so the raw query never has to hand-map every column.
+export async function findSummariesByIds(ids: string[]): Promise<InstituteRow[]> {
+  if (ids.length === 0) return []
+  return prisma.listing.findMany({ where: { id: { in: ids } }, select: SELECT })
+}
+
 export async function findPublishedById(id: string): Promise<InstituteRow | null> {
   return prisma.listing.findFirst({
     where: { id, vertical: 'INSTITUTE', status: 'PUBLISHED' },
@@ -155,3 +162,12 @@ export async function updateListingAndProfile(
     },
   })
 }
+
+// Re-exported so the service has one import surface for institute data access.
+export {
+  examFacets,
+  modeFacets,
+  searchPublished,
+  type SearchFilters,
+  type SearchHit,
+} from './institutes.search.repository.js'
