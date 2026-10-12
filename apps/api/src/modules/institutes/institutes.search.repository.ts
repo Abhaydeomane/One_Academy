@@ -33,9 +33,9 @@ export type SearchHit = {
 /// Largest value a Postgres `integer` holds; stands in for "no upper bound".
 const INT4_MAX = 2_147_483_647
 
-type Omitted = 'exams' | 'mode' | null
+export type Omitted = 'exams' | 'mode' | null
 
-function wherePredicates(filters: SearchFilters, omit: Omitted = null): Prisma.Sql[] {
+export function wherePredicates(filters: SearchFilters, omit: Omitted = null): Prisma.Sql[] {
   const parts: Prisma.Sql[] = [
     Prisma.sql`l.vertical = 'INSTITUTE'`,
     // BR-009 applied at the data boundary, so no caller can forget it.
@@ -78,7 +78,7 @@ function wherePredicates(filters: SearchFilters, omit: Omitted = null): Prisma.S
   return parts
 }
 
-function queryCte(filters: SearchFilters): Prisma.Sql {
+export function queryCte(filters: SearchFilters): Prisma.Sql {
   return Prisma.sql`WITH q AS (
     SELECT websearch_to_tsquery('english', ${filters.q ?? ''}) AS tsq
   )`
@@ -87,7 +87,7 @@ function queryCte(filters: SearchFilters): Prisma.Sql {
 /// City is an inner join because every listing has one; InstituteProfile is a
 /// left join so a listing missing its profile row still appears rather than
 /// vanishing from search.
-function baseJoins(): Prisma.Sql {
+export function baseJoins(): Prisma.Sql {
   return Prisma.sql`
     FROM "Listing" l
     CROSS JOIN q

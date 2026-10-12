@@ -897,9 +897,15 @@ export async function indexableCombinations(
 }
 ```
 
-Note `baseJoins()` already ends with its `WHERE`, so the fee-stats subquery appends
-`AND <predicates>`. If `baseJoins` is later changed to stop emitting `WHERE`, this is the
-call site that breaks — the integration test catches it immediately.
+**`baseJoins()` emits only `FROM` and the `JOIN`s — no `WHERE`.** The fee-stats subquery
+must therefore write its own `WHERE`, not `AND`.
+
+This was wrong in an earlier draft of this plan and the mistake is worth understanding,
+because it fails silently: an `AND` after the joins attaches to the trailing
+`LEFT JOIN "InstituteProfile" … ON …` clause. That is valid SQL which Postgres accepts
+happily, but the predicates become join conditions rather than row filters, so nothing is
+filtered at all — unpublished listings included. The integration test caught it only
+because it asserts on a draft listing's fee and on an exam nobody teaches.
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
@@ -909,8 +915,9 @@ pnpm --filter @one/api test institutes.landing.repository
 
 Expected: 17 passing.
 
-If `feeStatsForFilters` reports a syntax error near `AND`, print the generated SQL and
-check whether `baseJoins()` still emits its own `WHERE` clause.
+If `feeStatsForFilters` returns wrong numbers rather than erroring — a draft listing's fee
+as the minimum, or results for an exam nobody teaches — the subquery is using `AND` where
+it needs `WHERE`. See the note in Step 4.
 
 - [ ] **Step 6: Verify lint and commit**
 
@@ -2185,8 +2192,10 @@ rail component takes a uniform `label` and the page maps each.
 
 **Known risks accepted:**
 
-- `feeStatsForFilters` appends `AND <predicates>` after `baseJoins()`, which relies on that
-  helper emitting its own `WHERE`. Task 2 Step 5 names the symptom if that changes.
+- `feeStatsForFilters` writes its own `WHERE` after `baseJoins()`. If that helper ever
+  starts emitting a `WHERE`, this call site produces a syntax error — which is the good
+  case. The bad case is the reverse, documented in Task 2 Step 4: an `AND` there attaches
+  to a join condition and silently stops filtering.
 - The seed's tag distribution determines which combinations clear the threshold, so Task 4
   Step 4 reads the real counts from `/api/v1/landing/indexable` rather than asserting
   hardcoded paths.
