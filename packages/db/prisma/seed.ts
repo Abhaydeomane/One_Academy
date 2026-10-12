@@ -135,6 +135,15 @@ async function main() {
         cityId: city.id,
         shortDescription: `Pagination fixture number ${i}.`,
         instituteProfile: { create: { modes: ['ONLINE'] } },
+        // Every filler is tagged JEE, and the even ones are also NEET. That
+        // distribution is deliberate: it puts three JEE institutes in each
+        // seeded city, so every /jee-coaching-in-<city> landing page clears
+        // LANDING_MIN_INDEXABLE, while the NEET pages stay thin and exercise
+        // the noindex branch.
+        tags: {
+          create:
+            i % 2 === 0 ? [{ tagId: 'tag-jee' }, { tagId: 'tag-neet' }] : [{ tagId: 'tag-jee' }],
+        },
         batches: {
           create: [
             {
