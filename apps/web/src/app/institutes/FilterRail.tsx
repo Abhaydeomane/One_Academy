@@ -1,80 +1,164 @@
 import Link from 'next/link'
+import type { ReactNode } from 'react'
+import { FEE_BUCKETS, SORT_OPTIONS, type FacetCounts, type ListInstitutesQuery } from '@one/shared'
 
-type Option = { label: string; value: string | undefined }
-
-const EXAMS: Option[] = [
-  { label: 'All exams', value: undefined },
-  { label: 'JEE', value: 'jee' },
-  { label: 'NEET', value: 'neet' },
-]
-
-const MODES: Option[] = [
-  { label: 'Any mode', value: undefined },
-  { label: 'Offline', value: 'OFFLINE' },
-  { label: 'Online', value: 'ONLINE' },
-  { label: 'Hybrid', value: 'HYBRID' },
-]
-
-function hrefWith(
-  current: { city?: string; exam?: string; mode?: string },
-  patch: Record<string, string | undefined>,
-) {
-  const params = new URLSearchParams()
-  const merged = { ...current, ...patch }
-  for (const [key, value] of Object.entries(merged)) {
-    if (value) params.set(key, value)
-  }
-  const query = params.toString()
-  return query ? `/institutes?${query}` : '/institutes'
+const SORT_LABELS: Record<(typeof SORT_OPTIONS)[number], string> = {
+  relevance: 'Best match',
+  recent: 'Newest',
+  fee_asc: 'Lowest fee',
+  name: 'A–Z',
 }
 
-function Chip({ active, href, label }: { active: boolean; href: string; label: string }) {
+/// Builds a URL from the current query plus a patch. Paging always resets,
+/// because page 3 of a different filter set is meaningless.
+function hrefWith(
+  query: ListInstitutesQuery,
+  patch: Record<string, string | string[] | undefined>,
+): string {
+  const merged: Record<string, string | string[] | undefined> = {
+    q: query.q,
+    city: query.city,
+    exams: query.exams,
+    mode: query.mode,
+    feeMin: query.feeMin === undefined ? undefined : String(query.feeMin),
+    feeMax: query.feeMax === undefined ? undefined : String(query.feeMax),
+    sort: query.sort,
+    ...patch,
+  }
+
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(merged)) {
+    if (value === undefined) continue
+    if (Array.isArray(value)) {
+      for (const entry of value) params.append(key, entry)
+    } else if (value !== '') {
+      params.set(key, value)
+    }
+  }
+
+  const search = params.toString()
+  return search ? `/institutes?${search}` : '/institutes'
+}
+
+function Chip({
+  active,
+  href,
+  label,
+  count,
+}: {
+  active: boolean
+  href: string
+  label: string
+  count?: number
+}) {
   return (
     <Link
       href={href}
       scroll={false}
+      aria-pressed={active}
       className={[
-        'tap-target inline-flex shrink-0 snap-start items-center rounded-full border px-4 text-sm font-medium',
+        'tap-target inline-flex shrink-0 snap-start items-center gap-1 rounded-full border px-4 text-sm font-medium',
         active
           ? 'border-brand-500 bg-brand-500 text-white'
           : 'border-gray-300 bg-white text-gray-700',
       ].join(' ')}
     >
-      {label}
+      <span>{label}</span>
+      {count === undefined ? null : (
+        <span className={active ? 'text-brand-50' : 'text-gray-500'}>({count})</span>
+      )}
+      {active ? <span aria-hidden="true">×</span> : null}
     </Link>
   )
 }
 
-/// A horizontally scrollable rail rather than a sidebar: on a phone a sidebar
-/// either eats the viewport or hides behind a second tap.
-export function FilterRail({
-  current,
-}: {
-  current: { city?: string; exam?: string; mode?: string }
-}) {
+function Rail({ children }: { children: ReactNode }) {
   return (
-    <div className="-mx-4 space-y-2 px-4">
-      <div className="scroll-rail scroll-rail-hide-bar -mx-4 flex gap-2 px-4 pb-1">
-        {EXAMS.map((option) => (
-          <Chip
-            key={option.label}
-            label={option.label}
-            active={current.exam === option.value}
-            href={hrefWith(current, { exam: option.value, page: undefined })}
-          />
-        ))}
-      </div>
+    <div className="scroll-rail scroll-rail-hide-bar -mx-4 flex gap-2 px-4 pb-1">{children}</div>
+  )
+}
 
-      <div className="scroll-rail scroll-rail-hide-bar -mx-4 flex gap-2 px-4 pb-1">
-        {MODES.map((option) => (
-          <Chip
-            key={option.label}
-            label={option.label}
-            active={current.mode === option.value}
-            href={hrefWith(current, { mode: option.value, page: undefined })}
-          />
-        ))}
-      </div>
+export function FilterRail({ query, facets }: { query: ListInstitutesQuery; facets: FacetCounts }) {
+  const activeExams = query.exams ?? []
+  const activeBucket = FEE_BUCKETS.find(
+    (bucket) => bucket.feeMin === query.feeMin && bucket.feeMax === query.feeMax,
+  )
+  const activeSort = query.sort ?? (query.q ? 'relevance' : 'recent')
+
+  return (
+    <div className="space-y-2">
+      {facets.exams.length > 0 ? (
+        <Rail>
+          {facets.exams.map((facet) => {
+            const active = activeExams.includes(facet.slug)
+            // Tapping toggles rather than replaces, so multi-select works.
+            const next = active
+              ? activeExams.filter((slug) => slug !== facet.slug)
+              : [...activeExams, facet.slug]
+
+            return (
+              <Chip
+                key={facet.slug}
+                label={facet.label}
+                count={facet.count}
+                active={active}
+                href={hrefWith(query, {
+                  exams: next.length > 0 ? next : undefined,
+                  page: undefined,
+                })}
+              />
+            )
+          })}
+        </Rail>
+      ) : null}
+
+      {facets.modes.length > 0 ? (
+        <Rail>
+          {facets.modes.map((facet) => (
+            <Chip
+              key={facet.mode}
+              label={facet.mode.charAt(0) + facet.mode.slice(1).toLowerCase()}
+              count={facet.count}
+              active={query.mode === facet.mode}
+              href={hrefWith(query, {
+                mode: query.mode === facet.mode ? undefined : facet.mode,
+                page: undefined,
+              })}
+            />
+          ))}
+        </Rail>
+      ) : null}
+
+      <Rail>
+        {FEE_BUCKETS.map((bucket) => {
+          const active = activeBucket?.id === bucket.id
+          return (
+            <Chip
+              key={bucket.id}
+              label={bucket.label}
+              active={active}
+              href={hrefWith(query, {
+                feeMin: active || bucket.feeMin === undefined ? undefined : String(bucket.feeMin),
+                feeMax: active || bucket.feeMax === undefined ? undefined : String(bucket.feeMax),
+                page: undefined,
+              })}
+            />
+          )
+        })}
+      </Rail>
+
+      <Rail>
+        {SORT_OPTIONS.filter((option) => option !== 'relevance' || Boolean(query.q)).map(
+          (option) => (
+            <Chip
+              key={option}
+              label={SORT_LABELS[option]}
+              active={activeSort === option}
+              href={hrefWith(query, { sort: option, page: undefined })}
+            />
+          ),
+        )}
+      </Rail>
     </div>
   )
 }

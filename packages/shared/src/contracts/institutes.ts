@@ -82,20 +82,26 @@ export const instituteDetail = instituteSummary.extend({
 })
 export type InstituteDetail = z.infer<typeof instituteDetail>
 
+export type FeeBucketId = 'under-25k' | '25k-50k' | '50k-1l' | 'over-1l'
+
+/// Annotated rather than `as const satisfies`: the latter preserves each
+/// element's literal type, so a bucket with no `feeMin` would not have the
+/// property at all and every consumer reading `bucket.feeMin` would fail to
+/// typecheck. The open ends are genuinely optional.
+export type FeeBucket = {
+  readonly id: FeeBucketId
+  readonly label: string
+  readonly feeMin?: number
+  readonly feeMax?: number
+}
+
 /// Preset fee bands, in paise. Buckets rather than a dual-handle slider:
 /// sliders are unusable with a thumb, and these fit the existing chip rail.
 /// The boundaries are a first guess at the Indian coaching market and should
 /// be revisited against real fee data.
-export const FEE_BUCKETS = [
+export const FEE_BUCKETS: readonly FeeBucket[] = [
   { id: 'under-25k', label: 'Under ₹25,000', feeMax: 2_500_000 },
   { id: '25k-50k', label: '₹25,000 – ₹50,000', feeMin: 2_500_000, feeMax: 5_000_000 },
   { id: '50k-1l', label: '₹50,000 – ₹1,00,000', feeMin: 5_000_000, feeMax: 10_000_000 },
   { id: 'over-1l', label: 'Over ₹1,00,000', feeMin: 10_000_000 },
-] as const satisfies readonly {
-  id: string
-  label: string
-  feeMin?: number
-  feeMax?: number
-}[]
-
-export type FeeBucketId = (typeof FEE_BUCKETS)[number]['id']
+]

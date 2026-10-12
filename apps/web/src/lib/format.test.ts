@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDateRange, formatFee, formatSeats } from './format.js'
+import { formatDateRange, formatFee, formatFeeRange, formatSeats } from './format.js'
 
 describe('formatFee (BR-005)', () => {
   it('renders minor units as rupees with Indian digit grouping', () => {
@@ -38,5 +38,23 @@ describe('formatSeats', () => {
 
   it('reports a full batch without numbers', () => {
     expect(formatSeats(0, 60)).toBe('Full')
+  })
+})
+
+describe('formatFeeRange', () => {
+  it('renders a single value when both bounds match', () => {
+    expect(formatFeeRange(12500000, 12500000)).toBe('₹1,25,000')
+  })
+
+  it('renders a range when the bounds differ', () => {
+    expect(formatFeeRange(2500000, 10000000)).toBe('₹25,000 – ₹1,00,000')
+  })
+
+  it('returns null when there are no published batches', () => {
+    expect(formatFeeRange(null, null)).toBeNull()
+  })
+
+  it('returns null when only one bound is present, rather than half a range', () => {
+    expect(formatFeeRange(2500000, null)).toBeNull()
   })
 })

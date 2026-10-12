@@ -35,3 +35,11 @@ export function formatSeats(available: number, total: number): string {
   if (available === 0) return 'Full'
   return `${available} of ${total} seats left`
 }
+
+/// Fees arrive as integer minor units (BR-005). Returns null rather than a
+/// half-range so the caller can omit the line entirely.
+export function formatFeeRange(min: number | null, max: number | null): string | null {
+  if (min === null || max === null) return null
+  if (min === max) return formatFee(min, 'INR')
+  return `${formatFee(min, 'INR')} – ${formatFee(max, 'INR')}`
+}
