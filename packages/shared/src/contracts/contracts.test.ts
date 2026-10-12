@@ -2,23 +2,143 @@ import { describe, expect, it } from 'vitest'
 import {
   createBatchBody,
   createEnquiryBody,
+  facetCounts,
+  FEE_BUCKETS,
+  instituteListResponse,
+  instituteSummary,
   listInstitutesQuery,
   updateListingBody,
 } from './index.js'
 
 describe('listInstitutesQuery', () => {
-  it('defaults pagination and sort, leaving filters undefined', () => {
-    expect(listInstitutesQuery.parse({})).toEqual({ page: 1, limit: 20, sort: 'recent' })
+  it('defaults pagination and leaves sort undefined for the service to resolve', () => {
+    expect(listInstitutesQuery.parse({})).toEqual({ page: 1, limit: 20 })
   })
 
-  it('accepts city, exam and mode filters', () => {
-    const parsed = listInstitutesQuery.parse({ city: 'pune', exam: 'jee', mode: 'OFFLINE' })
+  it('accepts city, exams and mode filters', () => {
+    const parsed = listInstitutesQuery.parse({ city: 'pune', exams: ['jee'], mode: 'OFFLINE' })
     expect(parsed.city).toBe('pune')
+    expect(parsed.exams).toEqual(['jee'])
     expect(parsed.mode).toBe('OFFLINE')
   })
 
   it('rejects an unknown mode', () => {
     expect(listInstitutesQuery.safeParse({ mode: 'REMOTE' }).success).toBe(false)
+  })
+
+  it('accepts a free-text query and trims it', () => {
+    expect(listInstitutesQuery.parse({ q: '  allen pune  ' }).q).toBe('allen pune')
+  })
+
+  it('rejects a query longer than 100 characters', () => {
+    expect(listInstitutesQuery.safeParse({ q: 'a'.repeat(101) }).success).toBe(false)
+  })
+
+  it('wraps a single repeated parameter into an array', () => {
+    expect(listInstitutesQuery.parse({ exams: 'jee' }).exams).toEqual(['jee'])
+  })
+
+  it('keeps multiple repeated parameters as an array', () => {
+    expect(listInstitutesQuery.parse({ exams: ['jee', 'neet'] }).exams).toEqual(['jee', 'neet'])
+  })
+
+  it('rejects more than ten exams', () => {
+    const exams = Array.from({ length: 11 }, (_, index) => `exam-${index}`)
+    expect(listInstitutesQuery.safeParse({ exams }).success).toBe(false)
+  })
+
+  it('coerces fee bounds from query strings', () => {
+    const parsed = listInstitutesQuery.parse({ feeMin: '2500000', feeMax: '5000000' })
+    expect(parsed.feeMin).toBe(2500000)
+    expect(parsed.feeMax).toBe(5000000)
+  })
+
+  it('rejects a fee range whose minimum exceeds its maximum', () => {
+    expect(listInstitutesQuery.safeParse({ feeMin: '5000000', feeMax: '1000' }).success).toBe(false)
+  })
+
+  it('rejects a non-integer fee bound, because fees are minor units (BR-005)', () => {
+    expect(listInstitutesQuery.safeParse({ feeMin: '100.5' }).success).toBe(false)
+  })
+
+  it('accepts every supported sort value', () => {
+    for (const sort of ['relevance', 'recent', 'fee_asc', 'name']) {
+      expect(listInstitutesQuery.safeParse({ sort }).success).toBe(true)
+    }
+  })
+
+  it('no longer accepts sort=rating, which was inert', () => {
+    expect(listInstitutesQuery.safeParse({ sort: 'rating' }).success).toBe(false)
+  })
+})
+
+describe('facetCounts', () => {
+  it('validates exam and mode counts', () => {
+    const value = {
+      exams: [{ slug: 'jee', label: 'JEE', count: 12 }],
+      modes: [{ mode: 'OFFLINE' as const, count: 7 }],
+    }
+    expect(facetCounts.parse(value)).toEqual(value)
+  })
+
+  it('rejects an unknown mode in a facet', () => {
+    expect(
+      facetCounts.safeParse({ exams: [], modes: [{ mode: 'REMOTE', count: 1 }] }).success,
+    ).toBe(false)
+  })
+})
+
+describe('instituteSummary — fee range', () => {
+  const base = {
+    id: 'l1',
+    slug: 'alpha',
+    name: 'Alpha',
+    city: { slug: 'pune', name: 'Pune' },
+    locality: null,
+    shortDescription: null,
+    ratingAvg: 0,
+    ratingCount: 0,
+    modes: [],
+    exams: [],
+    batchCount: 0,
+  }
+
+  it('accepts a null fee range for a listing with no published batches', () => {
+    const parsed = instituteSummary.parse({ ...base, minFeeAmount: null, maxFeeAmount: null })
+    expect(parsed.minFeeAmount).toBeNull()
+  })
+
+  it('requires integer minor units for the fee range (BR-005)', () => {
+    expect(
+      instituteSummary.safeParse({ ...base, minFeeAmount: 1000.5, maxFeeAmount: 2000 }).success,
+    ).toBe(false)
+  })
+})
+
+describe('instituteListResponse', () => {
+  it('carries facets alongside the paginated items', () => {
+    const value = { items: [], total: 0, page: 1, limit: 20, facets: { exams: [], modes: [] } }
+    expect(instituteListResponse.parse(value)).toEqual(value)
+  })
+
+  it('rejects a response with no facets', () => {
+    expect(
+      instituteListResponse.safeParse({ items: [], total: 0, page: 1, limit: 20 }).success,
+    ).toBe(false)
+  })
+})
+
+describe('FEE_BUCKETS', () => {
+  it('covers the range without gaps, in paise', () => {
+    expect(FEE_BUCKETS.map((bucket) => bucket.id)).toEqual([
+      'under-25k',
+      '25k-50k',
+      '50k-1l',
+      'over-1l',
+    ])
+    expect(FEE_BUCKETS[0]?.feeMax).toBe(2_500_000)
+    expect(FEE_BUCKETS[1]?.feeMin).toBe(2_500_000)
+    expect(FEE_BUCKETS[3]?.feeMin).toBe(10_000_000)
   })
 })
 

@@ -4,5 +4,10 @@
     "rootDir": ".",
     "noEmit": true
   },
-  "include": ["src", "test", "vitest.config.ts"]
+  // vitest.config.ts is deliberately excluded, matching packages/shared and
+  // apps/web. Vitest transpiles it itself, and under NodeNext resolution
+  // `vitest/config` resolves to a pnpm re-export shim whose bare `.pnpm/...`
+  // specifier TypeScript cannot follow, so typechecking it reports a phantom
+  // missing export.
+  "include": ["src", "test"]
 }
