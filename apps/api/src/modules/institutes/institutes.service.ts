@@ -2,9 +2,10 @@ import type {
   BatchSummary,
   CreateBatchBody,
   InstituteDetail,
+  InstituteListResponse,
+  InstituteSort,
   InstituteSummary,
   ListInstitutesQuery,
-  Paginated,
   PartnerListingDetail,
   PartnerListingListResponse,
   PartnerListingSummary,
@@ -20,7 +21,16 @@ import {
 } from '../listings/listings.service.js'
 import * as repo from './institutes.repository.js'
 
-function toSummary(row: repo.InstituteRow, batchCount: number): InstituteSummary {
+/// The fee range and published-batch count that both the list and the detail
+/// payload need. The search query computes these as part of its own SQL; the
+/// single-listing case gets them from the batches service.
+type FeeSummary = {
+  minFeeAmount: number | null
+  maxFeeAmount: number | null
+  publishedBatchCount: number
+}
+
+function toSummary(row: repo.InstituteRow, fees: FeeSummary): InstituteSummary {
   return {
     id: row.id,
     slug: row.slug,
@@ -32,13 +42,15 @@ function toSummary(row: repo.InstituteRow, batchCount: number): InstituteSummary
     ratingCount: row.ratingCount,
     modes: row.instituteProfile?.modes ?? [],
     exams: row.tags.filter((entry) => entry.tag.kind === 'EXAM').map((entry) => entry.tag.slug),
-    batchCount,
+    batchCount: fees.publishedBatchCount,
+    minFeeAmount: fees.minFeeAmount,
+    maxFeeAmount: fees.maxFeeAmount,
   }
 }
 
-function toDetail(row: repo.InstituteRow, batchCount: number): InstituteDetail {
+function toDetail(row: repo.InstituteRow, fees: FeeSummary): InstituteDetail {
   return {
-    ...toSummary(row, batchCount),
+    ...toSummary(row, fees),
     about: row.instituteProfile?.about ?? null,
     website: row.instituteProfile?.website ?? null,
     establishedYear: row.instituteProfile?.establishedYear ?? null,
@@ -48,27 +60,46 @@ function toDetail(row: repo.InstituteRow, batchCount: number): InstituteDetail {
   }
 }
 
-export async function listPublished(
-  query: ListInstitutesQuery,
-): Promise<Paginated<InstituteSummary>> {
-  const { rows, total } = await repo.listPublished({
+/// Relevance is meaningless without a query, so the default depends on it.
+function resolveSort(query: ListInstitutesQuery): InstituteSort {
+  if (query.sort) return query.sort
+  return query.q ? 'relevance' : 'recent'
+}
+
+export async function listPublished(query: ListInstitutesQuery): Promise<InstituteListResponse> {
+  const filters: repo.SearchFilters = {
+    ...(query.q ? { q: query.q } : {}),
     ...(query.city ? { citySlug: query.city } : {}),
-    ...(query.exam ? { examSlug: query.exam } : {}),
+    ...(query.exams?.length ? { examSlugs: query.exams } : {}),
     ...(query.mode ? { mode: query.mode } : {}),
-    sort: query.sort,
+    ...(query.feeMin === undefined ? {} : { feeMin: query.feeMin }),
+    ...(query.feeMax === undefined ? {} : { feeMax: query.feeMax }),
+    sort: resolveSort(query),
     skip: (query.page - 1) * query.limit,
     take: query.limit,
+  }
+
+  const [matched, exams, modes] = await Promise.all([
+    repo.searchPublished(filters),
+    repo.examFacets(filters),
+    repo.modeFacets(filters),
+  ])
+
+  const rows = await repo.findSummariesByIds(matched.hits.map((hit) => hit.id))
+  const byId = new Map(rows.map((row) => [row.id, row]))
+
+  // `IN` does not preserve order, so the hit order is authoritative.
+  const items = matched.hits.flatMap((hit) => {
+    const row = byId.get(hit.id)
+    return row ? [toSummary(row, hit)] : []
   })
 
-  // batchCount counts published batches only, so it cannot be derived from a
-  // plain relation count on the listing.
-  const counts = await batches.countPublishedByListingIds(rows.map((row) => row.id))
-
   return {
-    items: rows.map((row) => toSummary(row, counts.get(row.id) ?? 0)),
-    total,
+    items,
+    total: matched.total,
     page: query.page,
     limit: query.limit,
+    facets: { exams, modes },
   }
 }
 
@@ -77,10 +108,10 @@ export async function getPublishedBySlug(slug: string) {
   const row = await repo.findPublishedById(resolved.listingId)
   if (!row) throw new NotFoundError('Institute not found')
 
-  const counts = await batches.countPublishedByListingIds([row.id])
+  const fees = await batches.feeSummaryForListing(row.id)
 
   return {
-    detail: toDetail(row, counts.get(row.id) ?? 0),
+    detail: toDetail(row, fees),
     canonicalSlug: resolved.canonicalSlug,
     redirected: resolved.redirected,
   }

@@ -89,10 +89,10 @@
           {
             "schema": {
               "type": "string",
-              "minLength": 1
+              "maxLength": 100
             },
             "required": false,
-            "name": "city",
+            "name": "q",
             "in": "query"
           },
           {
@@ -101,7 +101,20 @@
               "minLength": 1
             },
             "required": false,
-            "name": "exam",
+            "name": "city",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "maxItems": 10
+            },
+            "required": false,
+            "name": "exams",
             "in": "query"
           },
           {
@@ -119,13 +132,37 @@
           },
           {
             "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "required": false,
+            "name": "feeMin",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "required": false,
+            "name": "feeMax",
+            "in": "query"
+          },
+          {
+            "schema": {
               "type": "string",
               "enum": [
+                "relevance",
                 "recent",
-                "rating",
+                "fee_asc",
                 "name"
-              ],
-              "default": "recent"
+              ]
             },
             "required": false,
             "name": "sort",
@@ -206,6 +243,18 @@
                           },
                           "batchCount": {
                             "type": "integer"
+                          },
+                          "minFeeAmount": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "maxFeeAmount": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -219,7 +268,9 @@
                           "ratingCount",
                           "modes",
                           "exams",
-                          "batchCount"
+                          "batchCount",
+                          "minFeeAmount",
+                          "maxFeeAmount"
                         ]
                       }
                     },
@@ -235,13 +286,70 @@
                       "type": "integer",
                       "minimum": 1,
                       "maximum": 50
+                    },
+                    "facets": {
+                      "type": "object",
+                      "properties": {
+                        "exams": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "slug": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "count": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "slug",
+                              "label",
+                              "count"
+                            ]
+                          }
+                        },
+                        "modes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "mode": {
+                                "type": "string",
+                                "enum": [
+                                  "ONLINE",
+                                  "OFFLINE",
+                                  "HYBRID"
+                                ]
+                              },
+                              "count": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "mode",
+                              "count"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "exams",
+                        "modes"
+                      ]
                     }
                   },
                   "required": [
                     "items",
                     "total",
                     "page",
-                    "limit"
+                    "limit",
+                    "facets"
                   ]
                 }
               }
@@ -344,6 +452,18 @@
                     "batchCount": {
                       "type": "integer"
                     },
+                    "minFeeAmount": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "maxFeeAmount": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
                     "about": {
                       "type": [
                         "string",
@@ -409,6 +529,8 @@
                     "modes",
                     "exams",
                     "batchCount",
+                    "minFeeAmount",
+                    "maxFeeAmount",
                     "about",
                     "website",
                     "establishedYear",

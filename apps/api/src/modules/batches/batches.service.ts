@@ -60,6 +60,27 @@ export async function countPublishedByListingIds(listingIds: string[]) {
   return repo.countPublishedByListingIds(listingIds)
 }
 
+/// The detail page needs the same fee summary the search query computes, but
+/// for a single listing. R4 keeps institutes out of the batches repository, so
+/// the batches service exposes it.
+export async function feeSummaryForListing(listingId: string): Promise<{
+  minFeeAmount: number | null
+  maxFeeAmount: number | null
+  publishedBatchCount: number
+}> {
+  const rows = await repo.listPublishedByListing(listingId)
+  if (rows.length === 0) {
+    return { minFeeAmount: null, maxFeeAmount: null, publishedBatchCount: 0 }
+  }
+
+  const fees = rows.map((row) => row.feeAmount)
+  return {
+    minFeeAmount: Math.min(...fees),
+    maxFeeAmount: Math.max(...fees),
+    publishedBatchCount: rows.length,
+  }
+}
+
 export async function belongsToListing(batchId: string, listingId: string) {
   return repo.belongsToListing(batchId, listingId)
 }

@@ -36,19 +36,43 @@ describe('GET /api/v1/institutes', () => {
     expect(res.body.error.code).toBe('VALIDATION_FAILED')
   })
 
+  it('rejects the removed rating sort', async () => {
+    const res = await testApp().get('/api/v1/institutes?sort=rating')
+    expect(res.status).toBe(400)
+  })
+
+  it('rejects a fee range whose minimum exceeds its maximum', async () => {
+    const res = await testApp().get('/api/v1/institutes?feeMin=900000&feeMax=1000')
+    expect(res.status).toBe(400)
+  })
+
+  it('matches a free-text query against the name', async () => {
+    const res = await testApp().get('/api/v1/institutes?q=alpha')
+    const body = instituteListResponse.parse(res.body)
+    expect(body.total).toBe(1)
+    expect(body.items[0]?.slug).toBe(seed.publishedSlug)
+  })
+
+  it('returns an empty, well-formed response for a query that matches nothing', async () => {
+    const res = await testApp().get('/api/v1/institutes?q=kathmandu')
+    expect(res.status).toBe(200)
+    const body = instituteListResponse.parse(res.body)
+    expect(body.total).toBe(0)
+    expect(body.items).toEqual([])
+    expect(body.facets).toEqual({ exams: [], modes: [] })
+  })
+
+  it('accepts a repeated exams parameter', async () => {
+    const res = await testApp().get('/api/v1/institutes?exams=jee&exams=neet')
+    expect(res.status).toBe(200)
+    expect(instituteListResponse.parse(res.body).total).toBe(1)
+  })
+
   it('filters by city slug', async () => {
     const hit = await testApp().get('/api/v1/institutes?city=pune')
     expect(instituteListResponse.parse(hit.body).total).toBe(1)
 
     const miss = await testApp().get('/api/v1/institutes?city=delhi')
-    expect(instituteListResponse.parse(miss.body).total).toBe(0)
-  })
-
-  it('filters by exam tag', async () => {
-    const hit = await testApp().get('/api/v1/institutes?exam=jee')
-    expect(instituteListResponse.parse(hit.body).total).toBe(1)
-
-    const miss = await testApp().get('/api/v1/institutes?exam=cat')
     expect(instituteListResponse.parse(miss.body).total).toBe(0)
   })
 
@@ -60,9 +84,45 @@ describe('GET /api/v1/institutes', () => {
     expect(instituteListResponse.parse(miss.body).total).toBe(0)
   })
 
+  it('reports the fee range in integer minor units (BR-005)', async () => {
+    const body = instituteListResponse.parse((await testApp().get('/api/v1/institutes')).body)
+    expect(body.items[0]?.minFeeAmount).toBe(12500000)
+    expect(body.items[0]?.maxFeeAmount).toBe(12500000)
+  })
+
   it('counts only published batches in batchCount', async () => {
     const body = instituteListResponse.parse((await testApp().get('/api/v1/institutes')).body)
     expect(body.items[0]?.batchCount).toBe(1)
+  })
+
+  it('returns facet counts for exam and mode', async () => {
+    const body = instituteListResponse.parse((await testApp().get('/api/v1/institutes')).body)
+    expect(body.facets.exams).toEqual([{ slug: 'jee', label: 'JEE', count: 1 }])
+    expect(body.facets.modes).toEqual([{ mode: 'OFFLINE', count: 1 }])
+  })
+
+  it('preserves relevance order across the Prisma projection', async () => {
+    // The raw query orders the ids; the projection fetches them with `IN`,
+    // which does not preserve order. The service must restore it.
+    await prisma.listing.create({
+      data: {
+        vertical: 'INSTITUTE',
+        slug: 'zeta-alpha-mention',
+        name: 'Zeta Classes',
+        status: 'PUBLISHED',
+        publishedAt: new Date('2026-06-01T00:00:00Z'),
+        organizationId: seed.orgId,
+        cityId: seed.cityId,
+        shortDescription: 'Alpha Academy alumni teach here',
+        instituteProfile: { create: { modes: ['ONLINE'] } },
+      },
+    })
+
+    const res = await testApp().get('/api/v1/institutes?q=alpha')
+    const body = instituteListResponse.parse(res.body)
+    expect(body.total).toBe(2)
+    // Name match (weight A) must come before a description match (weight D).
+    expect(body.items[0]?.slug).toBe(seed.publishedSlug)
   })
 })
 
