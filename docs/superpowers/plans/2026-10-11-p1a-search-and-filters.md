@@ -413,9 +413,20 @@ pnpm --filter @one/api test search-triggers
 Expected: 6 passing. The triggers already exist from Step 4, so this test passes on first
 run — it is a characterisation test of the migration, not a red-green cycle.
 
-If a lexeme assertion fails, print the actual vector and adjust the expected **stem**, not
-the weight: `to_tsvector('english', 'programme')` yields `programm`. Never relax a weight
-assertion, because the weights are what make ranking work.
+Two things that will trip you up here, both confirmed during implementation:
+
+- **Weight D is not printed.** Postgres treats D as the default weight and omits the suffix,
+  so a description term appears as `'programm':8`, never `'programm':8D`. Asserting a
+  literal `D` always fails. Assert the position with no `[ABC]` suffix instead.
+- **Stems, not words.** `to_tsvector('english', 'programme')` yields `programm`, and
+  `'Sparse'` yields `spars`. Adjust the expected stem, never the weight — the weights are
+  what make ranking work.
+
+A real vector for the seeded listing looks like this, which is worth reading once:
+
+```
+'allen':1A 'career':2A 'institut':3A 'kothrud':4C 'pune':5C 'residenti':6 'coach':7 'programm':8
+```
 
 - [ ] **Step 7: Verify the whole suite and the schema-drift gate**
 

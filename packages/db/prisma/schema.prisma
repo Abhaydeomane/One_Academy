@@ -144,6 +144,11 @@ model Listing {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
+  /// Maintained by database triggers (see the add_listing_search_vector
+  /// migration). Prisma cannot read or write an Unsupported column; only the
+  /// raw search queries read it, and only the triggers write it.
+  searchVector Unsupported("tsvector")?
+
   organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   city             City              @relation(fields: [cityId], references: [id])
   instituteProfile InstituteProfile?
@@ -156,6 +161,10 @@ model Listing {
 
   @@index([status, vertical, cityId])
   @@index([organizationId])
+  /// Declared so `prisma migrate diff` sees the schema and the migration
+  /// history as equivalent; the index itself is created in the
+  /// add_listing_search_vector migration.
+  @@index([searchVector(ops: raw("tsvector_ops"))], type: Gin)
 }
 
 /// A published slug is immutable (BR-002); a rename leaves a redirect behind so
