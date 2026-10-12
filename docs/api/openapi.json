@@ -56,6 +56,326 @@
         "required": [
           "error"
         ]
+      },
+      "LandingPage": {
+        "type": "object",
+        "properties": {
+          "exam": {
+            "type": "object",
+            "properties": {
+              "slug": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "slug",
+              "label"
+            ]
+          },
+          "city": {
+            "type": "object",
+            "properties": {
+              "slug": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "slug",
+              "name",
+              "state"
+            ]
+          },
+          "mode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "ONLINE",
+              "OFFLINE",
+              "HYBRID",
+              null
+            ]
+          },
+          "listings": {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "city": {
+                      "type": "object",
+                      "properties": {
+                        "slug": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "slug",
+                        "name"
+                      ]
+                    },
+                    "locality": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "shortDescription": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "ratingAvg": {
+                      "type": "number"
+                    },
+                    "ratingCount": {
+                      "type": "integer"
+                    },
+                    "modes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "ONLINE",
+                          "OFFLINE",
+                          "HYBRID"
+                        ]
+                      }
+                    },
+                    "exams": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "batchCount": {
+                      "type": "integer"
+                    },
+                    "minFeeAmount": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "maxFeeAmount": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "slug",
+                    "name",
+                    "city",
+                    "locality",
+                    "shortDescription",
+                    "ratingAvg",
+                    "ratingCount",
+                    "modes",
+                    "exams",
+                    "batchCount",
+                    "minFeeAmount",
+                    "maxFeeAmount"
+                  ]
+                }
+              },
+              "total": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "page": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "limit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 50
+              }
+            },
+            "required": [
+              "items",
+              "total",
+              "page",
+              "limit"
+            ]
+          },
+          "parentTotal": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "indexable": {
+            "type": "boolean"
+          },
+          "canonicalPath": {
+            "type": "string"
+          },
+          "feeStats": {
+            "type": "object",
+            "properties": {
+              "minFeeAmount": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "maxFeeAmount": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "minFeeAmount",
+              "maxFeeAmount"
+            ]
+          },
+          "siblings": {
+            "type": "object",
+            "properties": {
+              "examsInCity": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "slug": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "path": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "slug",
+                    "label",
+                    "count",
+                    "path"
+                  ]
+                }
+              },
+              "citiesForExam": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "path": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "slug",
+                    "name",
+                    "count",
+                    "path"
+                  ]
+                }
+              },
+              "modeVariants": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string",
+                      "enum": [
+                        "ONLINE",
+                        "OFFLINE",
+                        "HYBRID"
+                      ]
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "path": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "mode",
+                    "count",
+                    "path"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "examsInCity",
+              "citiesForExam",
+              "modeVariants"
+            ]
+          }
+        },
+        "required": [
+          "exam",
+          "city",
+          "mode",
+          "listings",
+          "parentTotal",
+          "indexable",
+          "canonicalPath",
+          "feeStats",
+          "siblings"
+        ]
+      },
+      "LandingIndexable": {
+        "type": "object",
+        "properties": {
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "paths"
+        ]
       }
     },
     "parameters": {}
@@ -2200,6 +2520,95 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/landing": {
+      "get": {
+        "summary": "Resolve a programmatic landing page by its path",
+        "description": "Takes the raw path, e.g. /jee-coaching-in-pune, because only the database can decide whether \"online-jee\" is mode ONLINE plus exam \"jee\" or an exam slugged exactly that. Returns listings, the parent total that decides the canonical, set-wide fee stats and sibling links. 404 when the path is not a landing URL, when the exam or city is unknown, or when no listings match.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "required": false,
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "path",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Landing page data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LandingPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/landing/indexable": {
+      "get": {
+        "summary": "List landing paths eligible for indexing",
+        "description": "Only combinations at or above LANDING_MIN_INDEXABLE. Feeds the sitemap, which must never list a noindex URL.",
+        "responses": {
+          "200": {
+            "description": "Indexable landing paths",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LandingIndexable"
                 }
               }
             }

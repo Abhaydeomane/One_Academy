@@ -6,6 +6,7 @@ import type {
   InstituteSort,
   InstituteSummary,
   ListInstitutesQuery,
+  Paginated,
   PartnerListingDetail,
   PartnerListingListResponse,
   PartnerListingSummary,
@@ -66,6 +67,29 @@ function resolveSort(query: ListInstitutesQuery): InstituteSort {
   return query.q ? 'relevance' : 'recent'
 }
 
+/// Runs the search and projects the matched rows through the typed SELECT,
+/// restoring the rank order that `IN` does not preserve. Shared by the list
+/// endpoint and the landing endpoint so the two cannot diverge.
+export async function summariesForFilters(
+  filters: repo.SearchFilters,
+): Promise<Paginated<InstituteSummary>> {
+  const matched = await repo.searchPublished(filters)
+  const rows = await repo.findSummariesByIds(matched.hits.map((hit) => hit.id))
+  const byId = new Map(rows.map((row) => [row.id, row]))
+
+  const items = matched.hits.flatMap((hit) => {
+    const row = byId.get(hit.id)
+    return row ? [toSummary(row, hit)] : []
+  })
+
+  return {
+    items,
+    total: matched.total,
+    page: Math.floor(filters.skip / filters.take) + 1,
+    limit: filters.take,
+  }
+}
+
 export async function listPublished(query: ListInstitutesQuery): Promise<InstituteListResponse> {
   const filters: repo.SearchFilters = {
     ...(query.q ? { q: query.q } : {}),
@@ -79,28 +103,13 @@ export async function listPublished(query: ListInstitutesQuery): Promise<Institu
     take: query.limit,
   }
 
-  const [matched, exams, modes] = await Promise.all([
-    repo.searchPublished(filters),
+  const [listings, exams, modes] = await Promise.all([
+    summariesForFilters(filters),
     repo.examFacets(filters),
     repo.modeFacets(filters),
   ])
 
-  const rows = await repo.findSummariesByIds(matched.hits.map((hit) => hit.id))
-  const byId = new Map(rows.map((row) => [row.id, row]))
-
-  // `IN` does not preserve order, so the hit order is authoritative.
-  const items = matched.hits.flatMap((hit) => {
-    const row = byId.get(hit.id)
-    return row ? [toSummary(row, hit)] : []
-  })
-
-  return {
-    items,
-    total: matched.total,
-    page: query.page,
-    limit: query.limit,
-    facets: { exams, modes },
-  }
+  return { ...listings, facets: { exams, modes } }
 }
 
 export async function getPublishedBySlug(slug: string) {

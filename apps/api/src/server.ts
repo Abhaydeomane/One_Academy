@@ -6,6 +6,7 @@ import { requestId } from './middleware/requestId.js'
 import { accountsRouter } from './modules/accounts/accounts.routes.js'
 import { partnerBatchesRouter } from './modules/batches/batches.partner.routes.js'
 import { enquiriesRouter } from './modules/enquiries/enquiries.routes.js'
+import { landingRouter } from './modules/institutes/institutes.landing.routes.js'
 import { partnerInstitutesRouter } from './modules/institutes/institutes.partner.routes.js'
 import { institutesRouter } from './modules/institutes/institutes.routes.js'
 import { adminListingsRouter } from './modules/listings/listings.admin.routes.js'
@@ -45,6 +46,7 @@ export function createServer(): Express {
   })
 
   app.use('/api/v1/institutes', institutesRouter)
+  app.use('/api/v1/landing', landingRouter)
   app.use('/api/v1/enquiries', enquiriesRouter)
   app.use('/api/v1/partner/listings', partnerInstitutesRouter)
   app.use('/api/v1/partner/batches', partnerBatchesRouter)

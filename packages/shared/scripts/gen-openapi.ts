@@ -15,6 +15,9 @@ import {
   enquiryCreatedResponse,
   instituteDetail,
   instituteListResponse,
+  landingIndexableResponse,
+  landingPageResponse,
+  landingQuery,
   listInstitutesQuery,
   partnerBatchSummary,
   partnerListingDetail,
@@ -217,6 +220,41 @@ registry.registerPath({
     403: FORBIDDEN,
     404: NOT_FOUND,
     409: CONFLICT,
+  },
+})
+
+// --- Programmatic landing pages --------------------------------------------
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/landing',
+  summary: 'Resolve a programmatic landing page by its path',
+  description:
+    'Takes the raw path, e.g. /jee-coaching-in-pune, because only the database can decide ' +
+    'whether "online-jee" is mode ONLINE plus exam "jee" or an exam slugged exactly that. ' +
+    'Returns listings, the parent total that decides the canonical, set-wide fee stats and ' +
+    'sibling links. 404 when the path is not a landing URL, when the exam or city is ' +
+    'unknown, or when no listings match.',
+  request: { query: landingQuery },
+  responses: {
+    200: { description: 'Landing page data', ...json(named('LandingPage', landingPageResponse)) },
+    400: BAD_REQUEST,
+    404: NOT_FOUND,
+  },
+})
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/landing/indexable',
+  summary: 'List landing paths eligible for indexing',
+  description:
+    'Only combinations at or above LANDING_MIN_INDEXABLE. Feeds the sitemap, which must ' +
+    'never list a noindex URL.',
+  responses: {
+    200: {
+      description: 'Indexable landing paths',
+      ...json(named('LandingIndexable', landingIndexableResponse)),
+    },
   },
 })
 
