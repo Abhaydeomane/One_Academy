@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { Badge } from '@one/ui'
-import { batchListResponse, instituteDetail } from '@one/shared'
+import { batchListResponse, buildLandingPath, instituteDetail } from '@one/shared'
 import { apiGet, apiGetOptional } from '@/lib/api'
 import { formatDateRange, formatFee, formatSeats } from '@/lib/format'
 import { EnquiryForm } from './EnquiryForm'
@@ -160,6 +161,26 @@ export default async function InstituteDetailPage({ params }: { params: Params }
           </ul>
         )}
       </section>
+
+      {institute.exams.length > 0 ? (
+        <section className="space-y-2">
+          <h2 className="text-lg font-semibold">Explore similar institutes</h2>
+          {/* Every institute page is an entry point into the landing graph,
+              which is the direction crawl budget should flow. These pages
+              always exist: this institute is itself one of their listings. */}
+          <div className="scroll-rail scroll-rail-hide-bar -mx-4 flex gap-2 px-4 pb-1">
+            {institute.exams.map((exam) => (
+              <Link
+                key={exam}
+                href={buildLandingPath({ examSlug: exam, citySlug: institute.city.slug })}
+                className="tap-target inline-flex shrink-0 snap-start items-center rounded-full border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700"
+              >
+                {exam.toUpperCase()} coaching in {institute.city.name}
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section id="enquire" className="scroll-mt-20 space-y-3">
         <h2 className="text-lg font-semibold">Request a callback</h2>

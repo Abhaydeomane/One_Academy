@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next'
-import { instituteListResponse } from '@one/shared'
+import { instituteListResponse, landingIndexableResponse } from '@one/shared'
 import { apiGet } from '@/lib/api'
 
 const SITE_URL = process.env.SITE_URL ?? 'http://localhost:3000'
@@ -33,6 +33,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     if (data.items.length === 0 || page * data.limit >= data.total) break
     page += 1
+  }
+
+  // Only indexable combinations. Listing a noindex URL in a sitemap tells
+  // Google two contradictory things, which is worse than omitting it.
+  const landing = await apiGet('/api/v1/landing/indexable', landingIndexableResponse, 3600)
+  for (const path of landing.paths) {
+    entries.push({
+      url: `${SITE_URL}${path}`,
+      changeFrequency: 'weekly',
+      priority: 0.7,
+    })
   }
 
   return entries
