@@ -163,7 +163,16 @@ Nullable rows get no superlative, and a row where every value ties gets none eit
 
 ## 7. API surface
 
-### `GET /api/v1/institutes/compare`
+### `GET /api/v1/compare`
+
+Mounted on its own path, not under `/api/v1/institutes`. `institutesRouter` already
+declares `GET /:slug`, so `/api/v1/institutes/compare` would be a sibling of every
+institute slug — reachable only by declaring it first, and permanently shadowed if a
+listing is ever slugged `compare`. The code still lives in the `institutes` module per
+ADR 0004; module ownership governs where code sits, not what the URL looks like.
+
+The web route `/compare` has no equivalent problem: it is a static segment, and static
+segments beat the `[landing]` dynamic root (ADR 0013).
 
 Query:
 
