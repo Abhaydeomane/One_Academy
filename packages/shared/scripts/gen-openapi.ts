@@ -10,6 +10,8 @@ import {
   adminListingSummary,
   batchListResponse,
   batchSummary,
+  compareQuery,
+  compareResponse,
   createBatchBody,
   createEnquiryBody,
   enquiryCreatedResponse,
@@ -255,6 +257,26 @@ registry.registerPath({
       description: 'Indexable landing paths',
       ...json(named('LandingIndexable', landingIndexableResponse)),
     },
+  },
+})
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/compare',
+  summary: 'Compare 2-4 published institutes',
+  description:
+    'Columns are institutes; each pins one upcoming published batch, defaulting to the ' +
+    'cheapest. A stale slug is dropped and reported in `dropped` rather than failing the ' +
+    'request, and a stale pin falls back to the default with `pinFellBack` set — both are ' +
+    'the expected fate of a shared link. A pin naming another institute’s published ' +
+    'batch is a 400, because it cannot arise from the UI or from the passage of time. ' +
+    'Former slugs are resolved into `canonicalSlugs`; this route never answers 301, ' +
+    'because fetch would consume it before the browser could act (BUG-001).',
+  request: { query: compareQuery },
+  responses: {
+    200: { description: 'Comparison columns', ...json(named('Compare', compareResponse)) },
+    400: BAD_REQUEST,
+    404: NOT_FOUND,
   },
 })
 

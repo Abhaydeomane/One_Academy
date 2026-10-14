@@ -376,6 +376,256 @@
         "required": [
           "paths"
         ]
+      },
+      "Compare": {
+        "type": "object",
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "institute": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "city": {
+                      "type": "object",
+                      "properties": {
+                        "slug": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "slug",
+                        "name"
+                      ]
+                    },
+                    "locality": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "establishedYear": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "facultyCount": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "batchCount": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "slug",
+                    "name",
+                    "city",
+                    "locality",
+                    "establishedYear",
+                    "facultyCount",
+                    "batchCount"
+                  ]
+                },
+                "pinned": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "exam": {
+                      "type": "string"
+                    },
+                    "mode": {
+                      "type": "string",
+                      "enum": [
+                        "ONLINE",
+                        "OFFLINE",
+                        "HYBRID"
+                      ]
+                    },
+                    "startDate": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "endDate": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "scheduleText": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "seatsTotal": {
+                      "type": "integer"
+                    },
+                    "seatsAvailable": {
+                      "type": "integer"
+                    },
+                    "feeAmount": {
+                      "type": "integer"
+                    },
+                    "feeCurrency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "exam",
+                    "mode",
+                    "startDate",
+                    "endDate",
+                    "scheduleText",
+                    "seatsTotal",
+                    "seatsAvailable",
+                    "feeAmount",
+                    "feeCurrency"
+                  ]
+                },
+                "pinFellBack": {
+                  "type": "boolean"
+                },
+                "batches": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "exam": {
+                        "type": "string"
+                      },
+                      "mode": {
+                        "type": "string",
+                        "enum": [
+                          "ONLINE",
+                          "OFFLINE",
+                          "HYBRID"
+                        ]
+                      },
+                      "startDate": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "endDate": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time"
+                      },
+                      "scheduleText": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "seatsTotal": {
+                        "type": "integer"
+                      },
+                      "seatsAvailable": {
+                        "type": "integer"
+                      },
+                      "feeAmount": {
+                        "type": "integer"
+                      },
+                      "feeCurrency": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "title",
+                      "exam",
+                      "mode",
+                      "startDate",
+                      "endDate",
+                      "scheduleText",
+                      "seatsTotal",
+                      "seatsAvailable",
+                      "feeAmount",
+                      "feeCurrency"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "institute",
+                "pinned",
+                "pinFellBack",
+                "batches"
+              ]
+            }
+          },
+          "dropped": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slug": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string",
+                  "enum": [
+                    "NOT_FOUND",
+                    "UNPUBLISHED"
+                  ]
+                }
+              },
+              "required": [
+                "slug",
+                "reason"
+              ]
+            }
+          },
+          "canonicalSlugs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "columns",
+          "dropped",
+          "canonicalSlugs"
+        ]
       }
     },
     "parameters": {}
@@ -2609,6 +2859,71 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LandingIndexable"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/compare": {
+      "get": {
+        "summary": "Compare 2-4 published institutes",
+        "description": "Columns are institutes; each pins one upcoming published batch, defaulting to the cheapest. A stale slug is dropped and reported in `dropped` rather than failing the request, and a stale pin falls back to the default with `pinFellBack` set — both are the expected fate of a shared link. A pin naming another institute’s published batch is a 400, because it cannot arise from the UI or from the passage of time. Former slugs are resolved into `canonicalSlugs`; this route never answers 301, because fetch would consume it before the browser could act (BUG-001).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": true,
+            "name": "slug",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "maxItems": 4
+            },
+            "required": false,
+            "name": "batch",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comparison columns",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Compare"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
