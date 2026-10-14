@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  compareQuery,
   createBatchBody,
   createEnquiryBody,
   facetCounts,
@@ -199,5 +200,39 @@ describe('updateListingBody', () => {
 
   it('rejects a malformed website URL', () => {
     expect(updateListingBody.safeParse({ website: 'not-a-url' }).success).toBe(false)
+  })
+})
+
+describe('compareQuery', () => {
+  // A lone slug is coerced to an array and then rejected by BR-008, not by
+  // the array type check — so the failure must come from the refine, which is
+  // what proves the coercion ran at all.
+  it('coerces a single slug into an array, then rejects it as too few', () => {
+    const result = compareQuery.safeParse({ slug: 'allen' })
+    expect(result.success).toBe(false)
+    expect(JSON.stringify(result.error?.issues)).toContain('between 2 and 4')
+  })
+
+  it('accepts repeated slugs', () => {
+    expect(compareQuery.parse({ slug: ['allen', 'aakash'] }).slug).toEqual(['allen', 'aakash'])
+  })
+
+  // De-duplication happens before the count check, so a doubled checkbox
+  // value cannot push a legitimate pair over the limit.
+  it('rejects fewer than two distinct slugs', () => {
+    expect(compareQuery.safeParse({ slug: ['allen', 'allen'] }).success).toBe(false)
+  })
+
+  it('rejects more than four', () => {
+    expect(compareQuery.safeParse({ slug: ['a', 'b', 'c', 'd', 'e'] }).success).toBe(false)
+  })
+
+  it('accepts exactly two and exactly four', () => {
+    expect(compareQuery.safeParse({ slug: ['a', 'b'] }).success).toBe(true)
+    expect(compareQuery.safeParse({ slug: ['a', 'b', 'c', 'd'] }).success).toBe(true)
+  })
+
+  it('coerces a single batch pin into an array', () => {
+    expect(compareQuery.parse({ slug: ['a', 'b'], batch: 'a:b1' }).batch).toEqual(['a:b1'])
   })
 })

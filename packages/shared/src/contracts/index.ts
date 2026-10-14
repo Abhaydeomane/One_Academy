@@ -1,5 +1,6 @@
 export * from './institutes.js'
 export * from './batches.js'
+export * from './compare.js'
 export * from './enquiries.js'
 export * from './partner.js'
 export * from './admin.js'
