@@ -1,6 +1,6 @@
 # Flow: SEO landing pages
 
-Last verified against commit: REPLACE_AFTER_COMMIT
+Last verified against commit: 21b36d49cbeae8199c648498f721b8a0c652dc27
 
 ## Purpose
 

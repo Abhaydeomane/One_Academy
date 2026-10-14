@@ -1,6 +1,6 @@
 # Flow: Institute discovery
 
-Last verified against commit: dc2e9ee7706c17bb3769feaf99d263d55898e875
+Last verified against commit: 21b36d49cbeae8199c648498f721b8a0c652dc27
 
 ## Purpose
 
@@ -50,6 +50,10 @@ apps/web/src/app/institutes/[slug]/page.tsx
 
 An old slug resolves through `ListingRedirect` and the route answers 301 with the
 canonical URL.
+
+The detail page also carries an "Explore similar institutes" rail, one chip per exam,
+linking to `/<exam>-coaching-in-<city>` via `buildLandingPath`. Those pages always exist,
+because this institute is itself one of their listings — see `seo-landing-pages.md`.
 
 **Batches**
 
@@ -103,3 +107,6 @@ BR-002, BR-005, BR-009
 ## Related flows
 
 `listing-lifecycle.md` — how a listing becomes publicly visible in the first place.
+
+`seo-landing-pages.md` — the pre-built filters over this same search query, which is how
+most visitors arrive here.
