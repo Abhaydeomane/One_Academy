@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { prisma } from '@one/db'
 import { resetDb, seedMinimal, type MinimalSeed } from '../../../test/helpers/db.js'
-import { createForOrg, updateForOrg } from './batches.service.js'
+import { createForOrg, listUpcomingPublishedForListing, updateForOrg } from './batches.service.js'
 
 let seed: MinimalSeed
 
@@ -92,5 +92,51 @@ describe('updateForOrg publishing rules', () => {
     await expect(updateForOrg('missing', seed.orgId, { title: 'Nope' })).rejects.toMatchObject({
       code: 'NOT_FOUND',
     })
+  })
+})
+
+describe('listUpcomingPublishedForListing', () => {
+  const batch = (overrides: Record<string, unknown>) =>
+    prisma.batch.create({
+      data: {
+        listingId: seed.publishedListingId,
+        exam: 'JEE',
+        mode: 'ONLINE',
+        seatsTotal: 30,
+        seatsAvailable: 30,
+        feeCurrency: 'INR',
+        ...overrides,
+      } as never,
+    })
+
+  it('excludes past and DRAFT batches, cheapest upcoming first', async () => {
+    await batch({ title: 'Past cheap', startDate: past, feeAmount: 100000, status: 'PUBLISHED' })
+    await batch({
+      title: 'Future dear',
+      startDate: future,
+      feeAmount: 9000000,
+      status: 'PUBLISHED',
+    })
+    await batch({
+      title: 'Future cheap',
+      startDate: new Date('2027-12-01T00:00:00Z'),
+      feeAmount: 3000000,
+      status: 'PUBLISHED',
+    })
+    await batch({ title: 'Future draft', startDate: future, feeAmount: 100, status: 'DRAFT' })
+
+    const rows = await listUpcomingPublishedForListing(seed.publishedListingId)
+
+    // Past gone, DRAFT gone, and the cheapest upcoming batch leads so the
+    // caller can take [0] as the default pin. 'JEE 2027' is seedMinimal's own
+    // published batch at ₹1,25,000 — the dearest, so it sorts last.
+    expect(rows.map((row) => row.title)).toEqual(['Future cheap', 'Future dear', 'JEE 2027'])
+  })
+
+  it('returns an empty list when every published batch has started', async () => {
+    await prisma.batch.deleteMany({ where: { listingId: seed.publishedListingId } })
+    await batch({ title: 'Past', startDate: past, feeAmount: 100000, status: 'PUBLISHED' })
+
+    expect(await listUpcomingPublishedForListing(seed.publishedListingId)).toEqual([])
   })
 })

@@ -40,6 +40,22 @@ export async function listPublishedByListing(listingId: string): Promise<BatchRo
   })
 }
 
+/// Upcoming means startDate >= now. Comparison needs this and the rest of the
+/// app does not have it: search cards, landing cards and the detail page all
+/// say "upcoming" while counting every published batch (BUG-002). Fixing that
+/// moves P1a/P1b fee expectations and landing indexability, so it is not done
+/// here — but a comparison that defaults to a batch which already started
+/// would break the one promise the feature makes.
+///
+/// Ordered cheapest-first so the caller can take [0] as the default pin.
+export async function listUpcomingPublishedByListing(listingId: string): Promise<BatchRow[]> {
+  return prisma.batch.findMany({
+    where: { listingId, status: 'PUBLISHED', startDate: { gte: new Date() } },
+    orderBy: [{ feeAmount: 'asc' }, { startDate: 'asc' }],
+    select: SELECT,
+  })
+}
+
 export async function listAllByListing(listingId: string): Promise<BatchRow[]> {
   return prisma.batch.findMany({
     where: { listingId },

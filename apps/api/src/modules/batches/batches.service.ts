@@ -51,6 +51,21 @@ export async function listPublishedForListing(listingId: string): Promise<BatchS
   return rows.map(toSummary)
 }
 
+/// R4: comparison lives in the institutes module and reaches batch data only
+/// through this service. Cheapest upcoming batch first — see the repository.
+export async function listUpcomingPublishedForListing(listingId: string): Promise<BatchSummary[]> {
+  const rows = await repo.listUpcomingPublishedByListing(listingId)
+  return rows.map(toSummary)
+}
+
+/// Comparison needs to tell a pin that has gone stale (fall back) from one
+/// naming a batch that belongs to a different institute (reject).
+export async function findPublishedById(batchId: string): Promise<BatchSummary | null> {
+  const row = await repo.findById(batchId)
+  if (!row || row.status !== 'PUBLISHED') return null
+  return toSummary(row)
+}
+
 export async function listAllForListing(listingId: string): Promise<PartnerBatchSummary[]> {
   const rows = await repo.listAllByListing(listingId)
   return rows.map(toPartnerSummary)
