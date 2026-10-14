@@ -64,6 +64,30 @@ considered during P1a and rejected as premature for a query shape appearing once
 The single-listing case goes through `batches.service.feeSummaryForListing` and respects
 the boundary normally.
 
+## Landing pages reuse the search query
+
+`institutes.landing.service.ts` and `institutes.landing.repository.ts` serve
+`/api/v1/landing` and `/api/v1/landing/indexable`. Read
+`docs/flows/seo-landing-pages.md` before changing them.
+
+- **A landing page is a pre-built filter, not a second code path.** Results come from
+  `searchPublished` in `institutes.search.repository.ts`. `wherePredicates`, `queryCte`,
+  `baseJoins` and `Omitted` are exported from it so the landing aggregates filter on
+  exactly the same conditions. If you change what a filter means, change it once, there.
+- **The endpoint takes the raw `path`, not pre-split parameters.** `parseLandingPath`
+  returns ranked candidates because `online-jee` is ambiguous, and only the database can
+  pick (ADR 0013). Splitting in the web app would cost a round trip per guess.
+- `baseJoins()` emits only `FROM` and `JOIN`s. A predicate after it must start with
+  **`WHERE`** — an `AND` attaches to the trailing `LEFT JOIN`'s `ON` clause, which is valid
+  SQL that silently stops filtering. That bug leaked a DRAFT listing's fee once.
+- The parent-total probe uses **`take: 1`, never `0`**: `searchPublished` reads the total
+  off the first row, so an empty page reports no total.
+- `examFacets` is called with `{ ...filters, mode: undefined }`. Keeping the mode would hide
+  every sibling exam with no presence in that mode.
+- Eligibility and canonicals are **resolved here and returned as booleans and strings**.
+  The web app must not recompute them. The threshold is `LANDING_MIN_INDEXABLE` in
+  `@one/shared`, used by both the page and the sitemap (ADR 0014).
+
 ## The one hand-written SQL file
 
 `institutes.search.repository.ts` holds all three raw queries: matching, exam facets, mode

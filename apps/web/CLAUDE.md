@@ -55,6 +55,26 @@ device, so SEO and mobile are features, not polish.
   The unfiltered `/institutes` browse page stays indexable.
 - Response cache TTL comes from `API_CACHE_TTL` (seconds, default 300). The end-to-end
   suite sets it to 0, because its specs seed different data behind the same URLs.
-- Search has **no typo tolerance** — "Alen" will not find "Allen" (ADR 0010). If that
+- Search has **no typo tolerance**: "Alen" will not find "Allen" (ADR 0010). If that
   becomes a real complaint, the fix is a `pg_trgm` fallback in the API, not client-side
   fuzzing.
+
+## Landing pages
+
+`src/app/[landing]/page.tsx` serves `/<exam>-coaching-in-<city>` and its mode variants
+(ADR 0013). Read `docs/flows/seo-landing-pages.md` before changing it.
+
+- **This route owns the root namespace.** Every unmatched root path reaches it and 404s.
+  Static segments win Next's precedence, so `/institutes` and `/sitemap.xml` are safe, but
+  **never add a second dynamic root segment** — it would collide.
+- Parse with `parseLandingPath` from `@one/shared`. It returns ranked _candidates_, not one
+  answer, because `online-jee` is ambiguous; only the API can resolve it. Use it in the web
+  app purely as a cheap reject before spending a request.
+- **The page makes no SEO decisions.** `indexable` and `canonicalPath` arrive from the API
+  already resolved. Do not recompute a canonical or a threshold here.
+- Thin pages (`indexable: false`) still render, and get `robots: { index: false, follow:
+true }` — `follow` is deliberate, they pass equity to the institute pages (ADR 0014).
+- `sitemap.ts` reads `/api/v1/landing/indexable`, which already excludes thin pages. Never
+  list a `noindex` URL in the sitemap.
+- The fee sentence degrades to nothing when `minFeeAmount` is `null`. Do not print a range
+  you do not have.
