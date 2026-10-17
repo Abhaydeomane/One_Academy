@@ -1,6 +1,6 @@
 # Flow: Institute discovery
 
-Last verified against commit: 21b36d49cbeae8199c648498f721b8a0c652dc27
+Last verified against commit: a7f16839cf9202b2a01bfddd78d797b9f2269d06
 
 ## Purpose
 
@@ -37,6 +37,13 @@ rank order because `IN` does not preserve it.
 Free text matches institute name (weight A), exam labels (B), locality and city (C) and
 the description (D), via a trigger-maintained `tsvector` (ADR 0011). Facet counts omit
 their own filter, so selecting JEE still reports NEET's count.
+
+Each card also carries a comparison checkbox (`CompareCheckbox`, a sibling of the card's
+`Link`) bound by id to an otherwise-empty `<form id="compare" action="/compare">`, with
+`CompareBar` fixed to the bottom once anything is checked — see `comparison.md`.
+
+The card's "N upcoming batches" counts every published batch, not only future ones
+(BUG-002). The comparison page counts correctly, so the two can disagree.
 
 **Detail**
 

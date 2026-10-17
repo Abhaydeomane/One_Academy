@@ -1,6 +1,6 @@
 # Flow: SEO landing pages
 
-Last verified against commit: 21b36d49cbeae8199c648498f721b8a0c652dc27
+Last verified against commit: a7f16839cf9202b2a01bfddd78d797b9f2269d06
 
 ## Purpose
 
@@ -82,6 +82,10 @@ the mode filter would hide every sibling with no offline presence.
 
 A mode variant that would canonicalise to its parent is omitted from `modeVariants`, so the
 graph contains no link to a near-duplicate.
+
+These pages also carry the comparison checkboxes and `CompareBar`, identically to
+`/institutes` — this is where high-intent traffic lands, so omitting comparison here would
+waste it. See `comparison.md`.
 
 **Sitemap**
 
