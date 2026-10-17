@@ -64,6 +64,33 @@ considered during P1a and rejected as premature for a query shape appearing once
 The single-listing case goes through `batches.service.feeSummaryForListing` and respects
 the boundary normally.
 
+## Comparison
+
+`institutes.compare.{routes,service,repository}.ts` serve `GET /api/v1/compare`. Read
+`docs/flows/comparison.md` and ADR 0015 before changing them.
+
+- **Mounted at `/api/v1/compare`, not under `/api/v1/institutes`.** `institutesRouter`
+  already declares `GET /:slug`, which would shadow it the moment a listing is slugged
+  `compare`. ADR 0004 governs where the code lives, not what the URL looks like.
+- **Separate rot from tampering — this is the central judgement.** A pin that is gone, has
+  started, or was unpublished is the expected fate of a shared link: fall back to the
+  default and set `pinFellBack`. A pin naming a _published_ batch of a different institute
+  is a 400. A draft batch elsewhere is treated as rot, because confirming it would leak the
+  existence of unpublished content.
+- **A stale slug is dropped and reported, never fatal**, until fewer than two survive.
+  `dropped[]` is part of the contract so the UI can explain a link the student was sent.
+- **This route never answers 301.** `fetch` follows redirects transparently, so the
+  browser would keep the stale URL (BUG-001). Return `canonicalSlugs` as data and let the
+  page redirect.
+- **R4**: batch data comes only through `batches.service` —
+  `listUpcomingPublishedForListing`, `belongsToListing`, `findPublishedById`.
+- **Upcoming means `startDate >= now()`, and only comparison knows that.** Search cards,
+  landing cards and the detail page all say "upcoming" while counting every published batch
+  (BUG-002). Tightening that predicate globally moves P1a/P1b fee expectations and can drop
+  landing pages below `LANDING_MIN_INDEXABLE`, so it is not done here. **A search card may
+  report more batches than the comparison does. Comparison is correct — do not "fix" the
+  divergence by making comparison count past batches.**
+
 ## Landing pages reuse the search query
 
 `institutes.landing.service.ts` and `institutes.landing.repository.ts` serve

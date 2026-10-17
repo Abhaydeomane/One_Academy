@@ -28,6 +28,7 @@ mislead the next agent. Use `git log --follow`, `git blame` and the ADRs instead
 | `flows/listing-lifecycle.md`   | Draft → review → published, and what publication makes visible |
 | `flows/institute-discovery.md` | Browse, search, filter, detail page, enquiry                   |
 | `flows/seo-landing-pages.md`   | `/jee-coaching-in-pune`, canonicals, sibling rails, sitemap    |
+| `flows/comparison.md`          | Checkbox selection, pinned batches, stale-link degradation     |
 
 ## Keeping flows true
 
@@ -41,7 +42,8 @@ When you change behaviour, update the flow and bump its sha in the same pull req
 ## Where the project is
 
 P0 (foundation and one end-to-end slice) is complete: the API, both frontends, the
-documentation system and the moderation gate. P1a (search, filters and facets) and P1b
-(programmatic SEO landing pages) are complete on top of it. P1c onward are sketched in
+documentation system and the moderation gate. P1a (search, filters and facets), P1b
+(programmatic SEO landing pages) and P1c (comparison) are complete on top of it. P1d
+onward are sketched in
 `superpowers/specs/2026-10-11-one-academy-foundation-design.md` §16 and each gets its own
 spec before any code.

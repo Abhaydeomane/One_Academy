@@ -123,3 +123,6 @@ BR-005, BR-009
 
 `institute-discovery.md` — the search query these pages are a pre-built filter over, and
 where a visitor goes next.
+
+`comparison.md` — these pages carry the same comparison checkboxes, because this is where
+high-intent traffic lands.

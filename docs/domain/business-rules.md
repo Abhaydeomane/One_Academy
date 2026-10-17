@@ -54,7 +54,15 @@ partner lead inbox in P2 must enforce it explicitly.
 
 ## BR-008 — Comparison accepts 2–4 listings of a single vertical
 
-P1. Not implemented.
+Implemented in P1c. `COMPARE_MIN` and `COMPARE_MAX` in `@one/shared` are the single
+source. Slugs are **de-duplicated before the count is checked**, so a doubled checkbox
+value cannot consume a slot; outside the range is a 400, and `CompareBar` disables
+submission so the UI cannot produce that request. The single-vertical rule is enforced at
+the repository boundary (`vertical: 'INSTITUTE'`), not in the service.
+
+Each column may additionally pin **one** published upcoming batch (ADR 0015). Comparing
+two batches of the same institute is deliberately out of scope: that is "which batch
+should I join?", a detail-page question.
 
 ## BR-009 — Only PUBLISHED listings appear in public search or detail routes
 

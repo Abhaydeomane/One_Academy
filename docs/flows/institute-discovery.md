@@ -110,3 +110,6 @@ BR-002, BR-005, BR-009
 
 `seo-landing-pages.md` — the pre-built filters over this same search query, which is how
 most visitors arrive here.
+
+`comparison.md` — where the checkboxes on these cards lead, and the one place the card's
+"N upcoming batches" can disagree with what is shown (BUG-002).

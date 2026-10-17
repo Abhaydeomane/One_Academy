@@ -59,6 +59,30 @@ device, so SEO and mobile are features, not polish.
   becomes a real complaint, the fix is a `pg_trgm` fallback in the API, not client-side
   fuzzing.
 
+## Comparison
+
+`src/app/compare/` plus `CompareCheckbox.tsx` and `CompareBar.tsx` at the app root. Read
+`docs/flows/comparison.md` and ADR 0015 before changing them.
+
+- **The checkbox is a sibling of the card's `<Link>`, never a child** — inside an anchor it
+  navigates instead of toggling. It associates with the compare form via `form="compare"`,
+  because the results page already has a search form and nesting forms is invalid HTML.
+  Keep `relative` on the `<li>` and `pr-12` on the card.
+- **`name="slug"` is load-bearing.** Repeated `slug` params are what a checkbox group
+  emits, so selection needs no JavaScript. `CompareBar` is the only client component, and
+  only so the UI cannot submit a selection guaranteed to be rejected.
+- **`BatchPicker`'s `<option value>` is the pin grammar** (`slug:batchId`). Do not rebuild
+  URLs there, and never pass a function into it — it is a Client Component.
+- **The page redirects for a rename, never for a drop.** Compare `canonicalSlugs` against
+  the slugs that _survived_; comparing against all of them bounces on a dropped slug and
+  silently loses the "left out" notice.
+- **An invalid comparison URL is a 404, not a 500.** `apiGetOptional` maps only 404, so
+  the page checks the BR-008 bounds itself and treats a 400 as not-found.
+- **Superlatives are `lowest` and `soonest`, never "best"**, and a tie gets no tag. The
+  lowest fee is objectively the lowest and is not objectively the best.
+- `noindex, follow`, and never in the sitemap. Do not add a title suffix — the root
+  layout's template already appends " | One Academy".
+
 ## Landing pages
 
 `src/app/[landing]/page.tsx` serves `/<exam>-coaching-in-<city>` and its mode variants
