@@ -5,6 +5,8 @@ import { Badge } from '@one/ui'
 import { landingPageResponse, parseLandingPath, type LandingPageResponse } from '@one/shared'
 import { apiGetOptional } from '@/lib/api'
 import { formatFee, formatFeeRange } from '@/lib/format'
+import { CompareBar } from '../CompareBar'
+import { CompareCheckbox } from '../CompareCheckbox'
 import { SiblingRail } from './SiblingRail'
 
 export const revalidate = 300
@@ -79,7 +81,8 @@ export default async function LandingPage({ params }: { params: Params }) {
   ]
 
   return (
-    <div className="space-y-7">
+    // pb-20 keeps the fixed CompareBar from covering the last rail.
+    <div className="space-y-7 pb-20">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -93,15 +96,22 @@ export default async function LandingPage({ params }: { params: Params }) {
         </p>
       </header>
 
+      {/* Deliberately empty: the checkboxes live in the cards below and
+          associate with this form by id. */}
+      <form id="compare" action="/compare" method="get" />
+
       <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {data.listings.items.map((institute) => {
           const instituteFees = formatFeeRange(institute.minFeeAmount, institute.maxFeeAmount)
 
           return (
-            <li key={institute.id}>
+            <li key={institute.id} className="relative">
+              {/* pr-12 reserves room for the comparison checkbox, which is a
+                  sibling rather than a child: inside the Link it would
+                  navigate instead of toggling. */}
               <Link
                 href={`/institutes/${institute.slug}`}
-                className="block h-full rounded-lg border border-gray-200 bg-white p-4 active:bg-gray-50"
+                className="block h-full rounded-lg border border-gray-200 bg-white p-4 pr-12 active:bg-gray-50"
               >
                 <h2 className="text-base font-semibold leading-snug text-brand-700">
                   {institute.name}
@@ -129,6 +139,7 @@ export default async function LandingPage({ params }: { params: Params }) {
                   ) : null}
                 </div>
               </Link>
+              <CompareCheckbox slug={institute.slug} name={institute.name} />
             </li>
           )
         })}
@@ -166,6 +177,8 @@ export default async function LandingPage({ params }: { params: Params }) {
           Browse all institutes
         </Link>
       </p>
+
+      <CompareBar />
     </div>
   )
 }

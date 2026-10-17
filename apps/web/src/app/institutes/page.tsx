@@ -3,6 +3,8 @@ import { Badge } from '@one/ui'
 import { instituteListResponse, listInstitutesQuery, type ListInstitutesQuery } from '@one/shared'
 import { apiGet } from '@/lib/api'
 import { formatFeeRange } from '@/lib/format'
+import { CompareBar } from '../CompareBar'
+import { CompareCheckbox } from '../CompareCheckbox'
 import { FilterRail } from './FilterRail'
 import { SearchForm } from './SearchForm'
 
@@ -74,7 +76,8 @@ export default async function InstitutesPage({ searchParams }: { searchParams: S
   const narrowing = narrowingFilter(query)
 
   return (
-    <section className="space-y-4">
+    // pb-20 keeps the fixed CompareBar from covering the last card.
+    <section className="space-y-4 pb-20">
       <div className="space-y-1">
         <h1 className="text-xl font-bold sm:text-2xl">
           {query.q ? `Results for "${query.q}"` : 'Coaching institutes'}
@@ -87,6 +90,12 @@ export default async function InstitutesPage({ searchParams }: { searchParams: S
       <SearchForm query={query} />
 
       <FilterRail query={query} facets={data.facets} />
+
+      {/* Deliberately empty: the checkboxes live in the cards below and
+          associate with this form by id, because putting them inside the
+          search form would submit them to the wrong place, and nesting forms
+          is invalid HTML. */}
+      <form id="compare" action="/compare" method="get" />
 
       {data.items.length === 0 ? (
         <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-5">
@@ -110,11 +119,14 @@ export default async function InstitutesPage({ searchParams }: { searchParams: S
             const fees = formatFeeRange(institute.minFeeAmount, institute.maxFeeAmount)
 
             return (
-              <li key={institute.id}>
-                {/* The whole card is the tap target, not just the title. */}
+              <li key={institute.id} className="relative">
+                {/* The whole card is the tap target, not just the title.
+                    pr-12 reserves room for the comparison checkbox, which is a
+                    sibling rather than a child: inside the Link it would
+                    navigate instead of toggling. */}
                 <Link
                   href={`/institutes/${institute.slug}`}
-                  className="block h-full rounded-lg border border-gray-200 bg-white p-4 active:bg-gray-50"
+                  className="block h-full rounded-lg border border-gray-200 bg-white p-4 pr-12 active:bg-gray-50"
                 >
                   <h2 className="text-base font-semibold leading-snug text-brand-700">
                     {institute.name}
@@ -146,6 +158,7 @@ export default async function InstitutesPage({ searchParams }: { searchParams: S
                     {fees ? <p className="text-sm font-semibold text-brand-700">{fees}</p> : null}
                   </div>
                 </Link>
+                <CompareCheckbox slug={institute.slug} name={institute.name} />
               </li>
             )
           })}
@@ -181,6 +194,8 @@ export default async function InstitutesPage({ searchParams }: { searchParams: S
           )}
         </nav>
       ) : null}
+
+      <CompareBar />
     </section>
   )
 }
