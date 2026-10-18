@@ -82,6 +82,12 @@ export function partnerErrorMessage(error: unknown): string {
       return 'A published listing address cannot be changed.'
     case 'FORBIDDEN':
       return 'You do not have permission to change this listing.'
+    case 'LISTING_INCOMPLETE':
+      return 'Fill in the remaining details before submitting.'
+    case 'CITY_IMMUTABLE':
+      return "A published listing's city cannot be changed."
+    case 'UPSTREAM_UNAVAILABLE':
+      return "We couldn't set up your institute. Please try again."
     case 'VALIDATION_FAILED':
       return 'Please check the values you entered.'
     default:

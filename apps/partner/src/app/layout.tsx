@@ -1,5 +1,6 @@
-import { ClerkProvider, SignInButton, UserButton } from '@clerk/nextjs'
+import { ClerkProvider, OrganizationSwitcher, SignInButton, UserButton } from '@clerk/nextjs'
 import { auth } from '@clerk/nextjs/server'
+import { isAdmin } from '@/lib/admin'
 import type { Metadata, Viewport } from 'next'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
@@ -32,7 +33,23 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
               <Link href="/dashboard" className="text-base font-semibold text-brand-700">
                 One Academy Partners
               </Link>
-              {userId ? <UserButton /> : <SignInButton />}
+              {userId ? (
+                <div className="flex items-center gap-3">
+                  {(await isAdmin()) ? (
+                    <Link href="/admin/review" className="text-sm font-medium text-brand-700">
+                      Admin
+                    </Link>
+                  ) : null}
+                  <OrganizationSwitcher
+                    hidePersonal
+                    afterCreateOrganizationUrl="/dashboard/new"
+                    afterSelectOrganizationUrl="/dashboard"
+                  />
+                  <UserButton />
+                </div>
+              ) : (
+                <SignInButton />
+              )}
             </div>
           </header>
 
