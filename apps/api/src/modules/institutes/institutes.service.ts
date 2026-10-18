@@ -21,7 +21,6 @@ import * as accounts from '../accounts/accounts.service.js'
 import * as batches from '../batches/batches.service.js'
 import {
   assertOrgOwnsListing,
-  changeSlug,
   isSlugTaken,
   resolvePublishedSlug,
   submitForReview,
@@ -236,6 +235,7 @@ export async function updateForOrg(
   if (!current) throw new NotFoundError('Listing not found')
 
   let cityId: string | undefined
+  let slug: string | undefined
   if (body.citySlug !== undefined && body.citySlug !== current.city.slug) {
     if (current.status !== 'DRAFT') {
       throw new ConflictError(
@@ -248,12 +248,11 @@ export async function updateForOrg(
       throw new BadRequestError('Unknown city', { fieldErrors: { citySlug: ['Unknown city'] } })
     }
     cityId = city.id
-    // The slug embeds the city. A draft has never been public, so the slug is
-    // regenerated rather than redirected; BR-002 starts at publication.
-    await changeSlug(
-      listingId,
-      await availableListingSlug(slugify(`${body.name ?? current.name} ${city.slug}`)),
-    )
+    // The slug embeds the city. City changes are DRAFT-only, and a draft has
+    // never been public, so the slug is regenerated rather than redirected
+    // (BR-002 freezes slugs from publication). It is written in the same
+    // transaction as cityId, after all validation.
+    slug = await availableListingSlug(slugify(`${body.name ?? current.name} ${city.slug}`))
   }
 
   let examTagIds: string[] | undefined
@@ -275,6 +274,7 @@ export async function updateForOrg(
       ...(body.address === undefined ? {} : { address: body.address }),
       ...(body.contactPhone === undefined ? {} : { contactPhone: body.contactPhone }),
       ...(cityId ? { cityId } : {}),
+      ...(slug ? { slug } : {}),
     },
     {
       ...(body.about === undefined ? {} : { about: body.about }),

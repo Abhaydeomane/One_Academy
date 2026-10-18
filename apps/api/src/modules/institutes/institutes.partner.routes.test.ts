@@ -343,6 +343,23 @@ describe('PATCH /api/v1/partner/listings/:listingId — verification details', (
       .set('x-test-auth', auth('co_alpha'))
       .send({ examSlugs: ['jee', 'astrology'] })
     expect(res.status).toBe(400)
+    const tags = await prisma.listingTag.findMany({
+      where: { listingId: seed.draftListingId },
+      select: { tag: { select: { slug: true } } },
+    })
+    expect(tags.map((entry) => entry.tag.slug)).toEqual(['jee'])
+  })
+
+  it('writes nothing when a city move is followed by an invalid exam', async () => {
+    await prisma.city.create({ data: { slug: 'mumbai', name: 'Mumbai', state: 'Maharashtra' } })
+    const res = await testApp()
+      .patch(`/api/v1/partner/listings/${seed.draftListingId}`)
+      .set('x-test-auth', auth('co_alpha'))
+      .send({ citySlug: 'mumbai', examSlugs: ['astrology'] })
+    expect(res.status).toBe(400)
+    const row = await prisma.listing.findUniqueOrThrow({ where: { id: seed.draftListingId } })
+    expect(row.slug).toBe('draft-academy')
+    expect(row.cityId).toBe(seed.cityId)
   })
 
   it('400s a malformed phone', async () => {

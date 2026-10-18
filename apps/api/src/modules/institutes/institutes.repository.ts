@@ -167,6 +167,7 @@ export async function updateListingAndProfile(
     address?: string
     contactPhone?: string
     cityId?: string
+    slug?: string
   },
   profile: {
     about?: string
