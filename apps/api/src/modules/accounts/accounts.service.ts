@@ -1,4 +1,4 @@
-import { ForbiddenError } from '../../lib/errors.js'
+import { ConflictError, ForbiddenError } from '../../lib/errors.js'
 import * as repo from './accounts.repository.js'
 
 // Clerk owns identity and organisation membership. These rows are a local
@@ -35,6 +35,10 @@ export async function syncUser(input: {
   })
 }
 
+/// A Clerk organisation matches a local one only by clerkOrgId. Matching by
+/// slug would let anyone who names a Clerk organisation after an existing
+/// institute take over its listings (spec §6). Linking a seeded organisation
+/// to Clerk is a manual database statement (runbooks/local-setup.md).
 export async function syncOrganization(input: {
   clerkOrgId: string
   name: string
@@ -42,14 +46,35 @@ export async function syncOrganization(input: {
 }): Promise<string> {
   const byClerk = await repo.findOrgByClerkId(input.clerkOrgId)
   if (byClerk) return byClerk.id
+  return createOrgOnce(input)
+}
 
-  const bySlug = await repo.findOrgBySlug(input.slug)
-  if (bySlug) {
-    await repo.updateOrg(bySlug.id, { clerkOrgId: input.clerkOrgId })
-    return bySlug.id
+const MAX_SLUG_ATTEMPTS = 100
+
+async function availableOrgSlug(base: string): Promise<string> {
+  for (let attempt = 1; attempt <= MAX_SLUG_ATTEMPTS; attempt++) {
+    const candidate = attempt === 1 ? base : `${base}-${attempt}`
+    if (!(await repo.findOrgBySlug(candidate))) return candidate
   }
+  throw new ConflictError('CONFLICT', 'Could not allocate an organisation slug')
+}
 
-  return repo.createOrg(input)
+/// Creates the organisation, tolerating a concurrent creator: the webhook and
+/// an on-demand provision (Task 4) can race, and the unique clerkOrgId makes
+/// the loser's insert fail. The loser then returns the winner's row.
+export async function createOrgOnce(input: {
+  clerkOrgId: string
+  name: string
+  slug: string
+}): Promise<string> {
+  const slug = await availableOrgSlug(input.slug)
+  try {
+    return await repo.createOrg({ ...input, slug })
+  } catch (error) {
+    const existing = await repo.findOrgByClerkId(input.clerkOrgId)
+    if (existing) return existing.id
+    throw error
+  }
 }
 
 /// Translates a Clerk organisation id into the local Organization.id. An

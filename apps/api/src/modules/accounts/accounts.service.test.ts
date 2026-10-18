@@ -60,10 +60,25 @@ describe('syncOrganization and resolveLocalOrgId', () => {
     expect(await prisma.organization.count()).toBe(1)
   })
 
-  it('adopts an existing organisation that has no Clerk id yet', async () => {
+  it('never adopts an existing organisation by slug (account-takeover guard)', async () => {
     const existing = await prisma.organization.create({ data: { name: 'Seeded', slug: 'seeded' } })
+
     const id = await syncOrganization({ clerkOrgId: 'co_2', name: 'Seeded', slug: 'seeded' })
-    expect(id).toBe(existing.id)
+
+    expect(id).not.toBe(existing.id)
+    const created = await prisma.organization.findUniqueOrThrow({ where: { id } })
+    expect(created.slug).toBe('seeded-2')
+    expect(
+      (await prisma.organization.findUniqueOrThrow({ where: { id: existing.id } })).clerkOrgId,
+    ).toBeNull()
+  })
+
+  it('suffixes past every taken slug', async () => {
+    await prisma.organization.create({ data: { name: 'A', slug: 'alpha' } })
+    await prisma.organization.create({ data: { name: 'A', slug: 'alpha-2' } })
+
+    const id = await syncOrganization({ clerkOrgId: 'co_3', name: 'Alpha', slug: 'alpha' })
+    expect((await prisma.organization.findUniqueOrThrow({ where: { id } })).slug).toBe('alpha-3')
   })
 
   it('forbids an unknown Clerk organisation', async () => {
