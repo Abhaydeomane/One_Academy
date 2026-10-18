@@ -1,4 +1,6 @@
-import { ConflictError, ForbiddenError } from '../../lib/errors.js'
+import { fetchClerkOrganization, type ClerkOrganization } from '../../lib/clerk.js'
+import { ConflictError, UpstreamUnavailableError } from '../../lib/errors.js'
+import { slugify } from '../../lib/slug.js'
 import * as repo from './accounts.repository.js'
 
 // Clerk owns identity and organisation membership. These rows are a local
@@ -62,7 +64,7 @@ async function availableOrgSlug(base: string): Promise<string> {
 /// Creates the organisation, tolerating a concurrent creator: the webhook and
 /// an on-demand provision (Task 4) can race, and the unique clerkOrgId makes
 /// the loser's insert fail. The loser then returns the winner's row.
-export async function createOrgOnce(input: {
+async function createOrgOnce(input: {
   clerkOrgId: string
   name: string
   slug: string
@@ -77,13 +79,27 @@ export async function createOrgOnce(input: {
   }
 }
 
-/// Translates a Clerk organisation id into the local Organization.id. An
-/// unprovisioned organisation is a 403 rather than a crash, because the partner
-/// app can legitimately have a Clerk org that One Academy has not onboarded.
+/// Translates a Clerk organisation id into the local Organization.id. Under
+/// self-registration every Clerk organisation is a legitimate institute, so an
+/// unseen one is provisioned here rather than refused: the organization.created
+/// webhook can arrive after the partner's first request. The name comes from
+/// Clerk with the server secret, never from the request; the id comes from the
+/// verified session.
 export async function resolveLocalOrgId(clerkOrgId: string): Promise<string> {
   const org = await repo.findOrgByClerkId(clerkOrgId)
-  if (!org) throw new ForbiddenError('Organisation is not provisioned')
-  return org.id
+  if (org) return org.id
+  return provisionFromClerk(clerkOrgId)
+}
+
+async function provisionFromClerk(clerkOrgId: string): Promise<string> {
+  let remote: ClerkOrganization
+  try {
+    remote = await fetchClerkOrganization(clerkOrgId)
+  } catch {
+    throw new UpstreamUnavailableError('Could not reach Clerk to set up the organisation')
+  }
+  const slug = slugify(remote.slug ?? remote.name) || `org-${slugify(clerkOrgId)}`
+  return createOrgOnce({ clerkOrgId, name: remote.name, slug })
 }
 
 export async function linkMembership(input: {

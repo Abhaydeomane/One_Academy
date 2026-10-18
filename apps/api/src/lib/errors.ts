@@ -47,3 +47,10 @@ export class ConflictError extends AppError {
     super(code, 409, message, details)
   }
 }
+
+/// A service this request depends on (Clerk) did not answer. Nothing was written.
+export class UpstreamUnavailableError extends AppError {
+  constructor(message = 'An upstream service is unavailable') {
+    super('UPSTREAM_UNAVAILABLE', 503, message)
+  }
+}

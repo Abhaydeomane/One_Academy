@@ -1,10 +1,15 @@
-import { afterAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@one/db'
 import { resetDb } from '../../../test/helpers/db.js'
 import { resolveLocalOrgId, syncOrganization, syncUser } from './accounts.service.js'
+import { fetchClerkOrganization } from '../../lib/clerk.js'
+
+vi.mock('../../lib/clerk.js', () => ({ fetchClerkOrganization: vi.fn() }))
+const fetchOrg = vi.mocked(fetchClerkOrganization)
 
 beforeEach(async () => {
   await resetDb()
+  fetchOrg.mockReset()
 })
 
 afterAll(async () => {
@@ -80,8 +85,55 @@ describe('syncOrganization and resolveLocalOrgId', () => {
     const id = await syncOrganization({ clerkOrgId: 'co_3', name: 'Alpha', slug: 'alpha' })
     expect((await prisma.organization.findUniqueOrThrow({ where: { id } })).slug).toBe('alpha-3')
   })
+})
 
-  it('forbids an unknown Clerk organisation', async () => {
-    await expect(resolveLocalOrgId('co_missing')).rejects.toMatchObject({ code: 'FORBIDDEN' })
+describe('on-demand provisioning', () => {
+  it('creates an unknown organisation from Clerk', async () => {
+    fetchOrg.mockResolvedValue({ id: 'co_new', name: 'Gamma Classes', slug: 'gamma-classes' })
+
+    const id = await resolveLocalOrgId('co_new')
+
+    const org = await prisma.organization.findUniqueOrThrow({ where: { id } })
+    expect(org).toMatchObject({
+      clerkOrgId: 'co_new',
+      name: 'Gamma Classes',
+      slug: 'gamma-classes',
+    })
+    expect(fetchOrg).toHaveBeenCalledWith('co_new')
+  })
+
+  it('does not call Clerk for a known organisation', async () => {
+    const id = await syncOrganization({ clerkOrgId: 'co_1', name: 'Alpha', slug: 'alpha' })
+    expect(await resolveLocalOrgId('co_1')).toBe(id)
+    expect(fetchOrg).not.toHaveBeenCalled()
+  })
+
+  it('creates exactly one row when the webhook and a request race', async () => {
+    fetchOrg.mockResolvedValue({ id: 'co_new', name: 'Gamma Classes', slug: 'gamma-classes' })
+
+    const [fromWebhook, fromRequest] = await Promise.all([
+      syncOrganization({ clerkOrgId: 'co_new', name: 'Gamma Classes', slug: 'gamma-classes' }),
+      resolveLocalOrgId('co_new'),
+    ])
+
+    expect(fromRequest).toBe(fromWebhook)
+    expect(await prisma.organization.count()).toBe(1)
+  })
+
+  it('falls back to a slug from the Clerk id for a non-Latin name', async () => {
+    fetchOrg.mockResolvedValue({ id: 'co_Hindi1', name: 'ज्ञान अकादमी', slug: null })
+    const id = await resolveLocalOrgId('co_Hindi1')
+    expect((await prisma.organization.findUniqueOrThrow({ where: { id } })).slug).toBe(
+      'org-co-hindi1',
+    )
+  })
+
+  it('is UPSTREAM_UNAVAILABLE and writes nothing when Clerk fails', async () => {
+    fetchOrg.mockRejectedValue(new Error('network down'))
+    await expect(resolveLocalOrgId('co_new')).rejects.toMatchObject({
+      code: 'UPSTREAM_UNAVAILABLE',
+      status: 503,
+    })
+    expect(await prisma.organization.count()).toBe(0)
   })
 })

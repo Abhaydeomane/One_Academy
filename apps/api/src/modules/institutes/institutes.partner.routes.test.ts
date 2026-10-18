@@ -1,13 +1,18 @@
-import { afterAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@one/db'
 import { partnerListingDetail, partnerListingListResponse } from '@one/shared'
 import { resetDb, seedMinimal, type MinimalSeed } from '../../../test/helpers/db.js'
 import { testApp } from '../../../test/helpers/app.js'
+import { fetchClerkOrganization } from '../../lib/clerk.js'
+
+vi.mock('../../lib/clerk.js', () => ({ fetchClerkOrganization: vi.fn() }))
+const fetchOrg = vi.mocked(fetchClerkOrganization)
 
 let seed: MinimalSeed
 
 beforeEach(async () => {
   await resetDb()
+  fetchOrg.mockReset()
   seed = await seedMinimal()
   // The partner API receives Clerk organisation ids, so the mirror rows need
   // them populated.
@@ -54,11 +59,16 @@ describe('GET /api/v1/partner/listings', () => {
     expect(partnerListingListResponse.parse(res.body).items).toHaveLength(0)
   })
 
-  it('403s an organisation that is not provisioned locally', async () => {
+  it('provisions an organisation it has not seen and returns its empty list', async () => {
+    fetchOrg.mockResolvedValue({ id: 'co_unknown', name: 'Gamma Classes', slug: 'gamma-classes' })
+
     const res = await testApp()
       .get('/api/v1/partner/listings')
       .set('x-test-auth', auth('co_unknown'))
-    expect(res.status).toBe(403)
+
+    expect(res.status).toBe(200)
+    expect(partnerListingListResponse.parse(res.body).items).toHaveLength(0)
+    expect(await prisma.organization.count({ where: { clerkOrgId: 'co_unknown' } })).toBe(1)
   })
 })
 
