@@ -58,6 +58,10 @@ apps/web/src/app/institutes/[slug]/page.tsx
 An old slug resolves through `ListingRedirect` and the route answers 301 with the
 canonical URL.
 
+The detail page shows the partner-supplied street address; `contactPhone` is private and
+appears in no public response. A stored website is rendered (page and JSON-LD) only when
+`safeHttpUrl` accepts it.
+
 The detail page also carries an "Explore similar institutes" rail, one chip per exam,
 linking to `/<exam>-coaching-in-<city>` via `buildLandingPath`. Those pages always exist,
 because this institute is itself one of their listings — see `seo-landing-pages.md`.
