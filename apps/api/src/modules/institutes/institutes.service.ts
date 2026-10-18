@@ -57,6 +57,7 @@ function toSummary(row: repo.InstituteRow, fees: FeeSummary): InstituteSummary {
 function toDetail(row: repo.InstituteRow, fees: FeeSummary): InstituteDetail {
   return {
     ...toSummary(row, fees),
+    address: row.address,
     about: row.instituteProfile?.about ?? null,
     website: row.instituteProfile?.website ?? null,
     establishedYear: row.instituteProfile?.establishedYear ?? null,

@@ -7,6 +7,7 @@ export type InstituteRow = {
   slug: string
   name: string
   locality: string | null
+  address: string | null
   shortDescription: string | null
   ratingAvg: number
   ratingCount: number
@@ -28,6 +29,7 @@ const SELECT = {
   slug: true,
   name: true,
   locality: true,
+  address: true,
   shortDescription: true,
   ratingAvg: true,
   ratingCount: true,

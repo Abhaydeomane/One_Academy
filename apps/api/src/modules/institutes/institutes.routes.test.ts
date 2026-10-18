@@ -174,3 +174,47 @@ describe('GET /api/v1/institutes/:slug/batches', () => {
     expect(res.status).toBe(404)
   })
 })
+
+describe('contactPhone never reaches a public response', () => {
+  const PHONE = '9876543210'
+
+  beforeEach(async () => {
+    await prisma.listing.update({
+      where: { id: seed.publishedListingId },
+      data: { contactPhone: PHONE, address: '12 FC Road, Pune 411005' },
+    })
+    // Comparison needs two published listings.
+    await prisma.listing.create({
+      data: {
+        vertical: 'INSTITUTE',
+        slug: 'beta-academy',
+        name: 'Beta Academy',
+        status: 'PUBLISHED',
+        publishedAt: new Date('2026-01-02T00:00:00Z'),
+        organizationId: seed.otherOrgId,
+        cityId: seed.cityId,
+        contactPhone: '9123456780',
+        instituteProfile: { create: { modes: ['ONLINE'] } },
+      },
+    })
+  })
+
+  it.each([
+    ['detail', () => `/api/v1/institutes/${seed.publishedSlug}`],
+    ['search', () => '/api/v1/institutes?q=academy'],
+    ['landing', () => '/api/v1/landing?path=jee-coaching-in-pune'],
+    ['compare', () => `/api/v1/compare?slug=${seed.publishedSlug}&slug=beta-academy`],
+  ])('%s omits it', async (_name, path) => {
+    const res = await testApp().get(path())
+    expect(res.status).toBe(200)
+    const text = JSON.stringify(res.body)
+    expect(text).not.toContain(PHONE)
+    expect(text).not.toContain('9123456780')
+    expect(text).not.toContain('contactPhone')
+  })
+
+  it('shows the address on the public detail', async () => {
+    const res = await testApp().get(`/api/v1/institutes/${seed.publishedSlug}`)
+    expect(res.body.address).toBe('12 FC Road, Pune 411005')
+  })
+})

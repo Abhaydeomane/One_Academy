@@ -49,7 +49,9 @@ export default async function InstituteDetailPage({ params }: { params: Params }
     address: {
       '@type': 'PostalAddress',
       addressLocality: institute.city.name,
-      ...(institute.locality ? { streetAddress: institute.locality } : {}),
+      ...((institute.address ?? institute.locality)
+        ? { streetAddress: institute.address ?? institute.locality }
+        : {}),
     },
     ...(institute.ratingCount > 0
       ? {
@@ -75,6 +77,7 @@ export default async function InstituteDetailPage({ params }: { params: Params }
           {institute.locality ? `${institute.locality}, ` : ''}
           {institute.city.name}
         </p>
+        {institute.address ? <p className="text-sm text-gray-600">{institute.address}</p> : null}
         <div className="flex flex-wrap gap-1.5">
           {institute.exams.map((exam) => (
             <Badge key={exam}>{exam.toUpperCase()}</Badge>

@@ -73,6 +73,7 @@ export const instituteListResponse = paginated(instituteSummary).extend({
 export type InstituteListResponse = z.infer<typeof instituteListResponse>
 
 export const instituteDetail = instituteSummary.extend({
+  address: z.string().nullable(),
   about: z.string().nullable(),
   website: z.string().nullable(),
   establishedYear: z.number().int().nullable(),
