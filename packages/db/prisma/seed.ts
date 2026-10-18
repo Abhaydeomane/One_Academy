@@ -26,8 +26,13 @@ async function main() {
 
   await prisma.organization.upsert({
     where: { id: 'org-seed-alpha' },
-    create: { id: 'org-seed-alpha', name: 'Alpha Education Group', slug: 'alpha-education-group' },
-    update: {},
+    create: {
+      id: 'org-seed-alpha',
+      name: 'Alpha Education Group',
+      slug: 'alpha-education-group',
+      verifiedAt: new Date('2026-01-01T00:00:00Z'),
+    },
+    update: { verifiedAt: new Date('2026-01-01T00:00:00Z') },
   })
 
   await prisma.user.upsert({

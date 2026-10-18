@@ -75,13 +75,19 @@ enum TagKind {
 
 /// Partner account that owns listings. Mirrors a Clerk organization.
 model Organization {
-  id         String    @id @default(cuid(2))
-  name       String
-  slug       String    @unique
-  clerkOrgId String?   @unique
-  status     OrgStatus @default(ACTIVE)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id                    String    @id @default(cuid(2))
+  name                  String
+  slug                  String    @unique
+  clerkOrgId            String?   @unique
+  status                OrgStatus @default(ACTIVE)
+  /// Set when the organisation's first listing is published (BR-013). Null
+  /// means One Academy has not yet verified that the institute is real.
+  verifiedAt            DateTime?
+  /// Clerk user id of the admin who verified it. A plain string, not a User FK:
+  /// the local User row exists only if the user webhook arrived.
+  verifiedByClerkUserId String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   listings    Listing[]
   memberships Membership[]
@@ -135,6 +141,12 @@ model Listing {
   organizationId   String
   cityId           String
   locality         String?
+  address          String?
+  /// Private: for verification only. Never part of a public contract.
+  contactPhone     String?
+  /// Latest rejection reason (BR-014). Cleared on the next submit.
+  rejectionReason  String?
+  submittedAt      DateTime?
   lat              Float?
   lng              Float?
   shortDescription String?
