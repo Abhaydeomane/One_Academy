@@ -32,8 +32,9 @@ module's data calls a delegating function on its own service — see
 ## Clerk organisation ids are not local ids
 
 `req.auth.orgId` is a **Clerk** organisation id. Translate it with each module service's
-`resolveOrganizationId()` before any database query. An organisation Clerk knows but One
-Academy has not onboarded is a 403, not a crash.
+`resolveOrganizationId()` before any database query. An organisation Clerk knows but the mirror
+has not seen is provisioned on demand from Clerk (`lib/clerk.ts`); it is never matched by
+slug (ADR 0016).
 
 ## Tests
 

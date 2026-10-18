@@ -1,7 +1,7 @@
 # One Academy — P2a: Institute self-registration and verification
 
 Date: 2026-10-19
-Status: Draft — awaiting owner review
+Status: Approved
 Phase: P2a
 Depends on: P0 (foundation, moderation gate), P1a–P1c
 
@@ -218,7 +218,7 @@ they apply. Forms post through server actions and validate with the shared schem
 | PUBLISHED                    | Link to the public page.                                                                |
 
 Verification details: address, contact phone (labelled "Private — only One Academy sees
-this"), exam chips (multi-select, `aria-pressed`), city (editable only in DRAFT).
+this"), exam chips (checkbox inputs styled as chips), city (editable only in DRAFT).
 
 ## 9. Admin screens
 

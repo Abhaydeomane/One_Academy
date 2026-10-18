@@ -10,19 +10,26 @@ This is the moderation gate: nothing a partner writes reaches the public site un
 ## Actors and entry points
 
 - Partner — a Clerk user with an active organisation, at `/dashboard/<listingId>`
-- Global ADMIN — via `POST /api/v1/admin/listings/:listingId/publish`
+  (creation is in `partner-onboarding.md`)
+- Global ADMIN — at `/admin/review/<listingId>`, via `POST /api/v1/admin/listings/:listingId/publish`
+  and `.../reject`
 
 ## State machine
 
 ```
 DRAFT ──submit──▶ PENDING_REVIEW ──publish (ADMIN only)──▶ PUBLISHED ──▶ SUSPENDED
+  ▲                    │
+  └─reject (ADMIN, reason required)
 ```
 
-Only the ADMIN transition publishes (BR-001). A published slug is frozen (BR-002).
+Only the ADMIN transition publishes (BR-001). A published slug is frozen (BR-002). Publish
+and reject both start from PENDING_REVIEW only — publishing a DRAFT is
+`INVALID_STATUS_TRANSITION` — and each is a write conditional on that status, so two
+concurrent admin decisions on one listing yield exactly one success and one 409.
 
 ## Sequence
 
-**Partner submits for review**
+**Partner submits for review** (BR-012)
 
 ```
 apps/partner/src/app/dashboard/[listingId]/page.tsx
@@ -35,8 +42,11 @@ apps/partner/src/app/dashboard/[listingId]/page.tsx
   → apps/api/src/modules/listings/listings.service.ts        assertOrgOwnsListing, submitForReview
 ```
 
-`submitForReview` accepts only a DRAFT listing; anything else is
-`INVALID_STATUS_TRANSITION`.
+`submitForReviewForOrg` checks the status first, then completeness: a non-DRAFT listing is
+`INVALID_STATUS_TRANSITION` even if it is incomplete; a DRAFT missing details is
+`LISTING_INCOMPLETE` with `details.missing`. `missingForSubmission`
+(`packages/shared/src/submission.ts`) is the single definition, shared with the checklist on
+the partner page. A successful submit stamps `submittedAt` and clears `rejectionReason`.
 
 **Partner creates and publishes a batch**
 
@@ -52,17 +62,38 @@ apps/partner/src/app/dashboard/[listingId]/BatchForm.tsx
   → batches.service.updateForOrg          BR-003 future start, BR-004 parent published
 ```
 
-**Admin publishes the listing**
+**Admin publishes the listing** (BR-013)
 
 ```
-POST /api/v1/admin/listings/:listingId/publish
-  → apps/api/src/modules/listings/listings.admin.routes.ts   requireAdmin (BR-001)
-  → apps/api/src/modules/listings/listings.service.ts        publishAsAdmin → publish()
-                                                             stamps publishedAt
+/admin/review/<id>
+  → apps/partner/src/app/admin/review/[listingId]/actions.ts   approveAction
+  → POST /api/v1/admin/listings/:listingId/publish
+  → apps/api/src/modules/listings/listings.admin.routes.ts     requireAdmin (BR-001)
+  → apps/api/src/modules/listings/listings.service.ts          publishAsAdmin → publish()
+  → apps/api/src/modules/listings/listings.repository.ts       publishAndVerify
 ```
+
+`publishAndVerify` sets the listing PUBLISHED and, if the organisation's `verifiedAt` is
+null, verifies it in the same transaction. Both writes are conditional (listing on
+PENDING_REVIEW, organisation on `verifiedAt: null`). If another decision won, nothing is
+written and the caller gets 409.
 
 The listing is then visible on the public detail page, and previously-draft batches can be
 published.
+
+**Admin rejects** (BR-014)
+
+```
+/admin/review/<id>
+  → apps/partner/src/app/admin/review/[listingId]/actions.ts   rejectAction
+  → POST /api/v1/admin/listings/:listingId/reject
+  → apps/api/src/modules/listings/listings.admin.routes.ts     requireAdmin
+  → apps/api/src/modules/listings/listings.service.ts          rejectAsAdmin
+  → apps/api/src/modules/listings/listings.repository.ts       markRejected
+```
+
+The listing returns to DRAFT with `rejectionReason` set; the partner page shows it in a red
+banner and the partner can fix and resubmit. The organisation is not verified by a rejection.
 
 ## Diagram
 
@@ -71,15 +102,18 @@ transition labelled on the arrows, and BR-004 drawn as a guard on batch publicat
 
 ## Business rules invoked
 
-BR-001, BR-002, BR-003, BR-004, BR-005, BR-010
+BR-001, BR-002, BR-003, BR-004, BR-005, BR-010, BR-012, BR-013, BR-014
 
 ## Failure modes
 
 | Condition                                    | API response                     | What the partner sees                                            |
 | -------------------------------------------- | -------------------------------- | ---------------------------------------------------------------- |
 | Listing owned by another organisation        | 403 `FORBIDDEN`                  | "You do not have permission to change this listing."             |
-| Clerk organisation not provisioned locally   | 403 `FORBIDDEN`                  | "No organisation selected" card                                  |
 | Submitting a non-DRAFT listing               | 409 `INVALID_STATUS_TRANSITION`  | "This listing cannot be submitted in its current state."         |
+| Submit with required details missing         | 409 `LISTING_INCOMPLETE`         | The checklist items still unticked                               |
+| City changed after publication               | 409 `CITY_IMMUTABLE`             | "A published listing's city cannot be changed."                  |
+| Reject without a valid reason                | 400 `VALIDATION_FAILED`          | Inline error on the reason box                                   |
+| Publish or reject a listing not in review    | 409 `INVALID_STATUS_TRANSITION`  | "This listing was already reviewed" (also on a lost race)        |
 | Publishing a batch starting in the past      | 409 `BATCH_START_DATE_PAST`      | "A batch starting in the past cannot be published."              |
 | Publishing a batch on an unpublished listing | 409 `BATCH_PARENT_NOT_PUBLISHED` | "Your listing must be published before you can publish a batch." |
 | seatsAvailable outside 0..seatsTotal         | 409 `SEATS_OUT_OF_RANGE`         | "Seats available must be between zero and the total seats."      |

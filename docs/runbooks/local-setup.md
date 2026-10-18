@@ -117,12 +117,23 @@ psql "postgresql://one_academy:local_dev_only@localhost:5432/one_academy_dev" \
   -c "UPDATE \"Organization\" SET \"clerkOrgId\"='<clerk org id>' WHERE id='org-seed-alpha';"
 ```
 
-To make yourself a platform admin, set `globalRole` directly — no endpoint grants it:
+To make yourself a platform admin, use the Clerk dashboard — no endpoint or database
+statement grants it, and `User.globalRole` is not used for authorization (ADR 0006):
 
-```bash
-psql "postgresql://one_academy:local_dev_only@localhost:5432/one_academy_dev" \
-  -c "UPDATE \"User\" SET \"globalRole\"='ADMIN' WHERE email='<your email>';"
-```
+1. Open your user and set its **public metadata** to `{"globalRole":"ADMIN"}`.
+2. Under **Sessions → Customize session token**, add `{"metadata": "{{user.public_metadata}}"}`.
+3. Sign out and in again so the new token is issued.
+
+**Organizations must be enabled** in the Clerk dashboard, or `/onboarding` has nothing to
+create. New organisations are mirrored by the webhook and, if a request beats it, provisioned
+on demand from Clerk's Backend API. The manual `clerkOrgId` statement above is the **only**
+way to link a seeded organisation; slugs are never matched (ADR 0016).
+
+### Partner app environment
+
+`WEB_BASE_URL` (public site origin, for the "View your public page" link) is **required in
+production**. When unset there, the published banner omits the link rather than pointing at
+localhost. `apps/partner/.env.example` sets it to `http://localhost:3000` for development.
 
 ## Troubleshooting
 

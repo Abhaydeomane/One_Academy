@@ -50,7 +50,7 @@ Schema only in P0; no endpoints until P2.
 
 P0 exposes no enquiry read endpoint, so this holds by construction;
 `enquiries.service.listForListing` is reachable only from organisation-scoped routes. The
-partner lead inbox in P2 must enforce it explicitly.
+partner lead inbox (slice P2d) must enforce it explicitly.
 
 ## BR-008 — Comparison accepts 2–4 listings of a single vertical
 
@@ -82,3 +82,41 @@ changing a partner's number would be worse than refusing it.
 
 - Implemented: `batches.service.assertSeats`, migration `batch_seats_invariant`
 - Tested: `batches.service.test.ts`
+
+## BR-011 — A partner creates listings only for their own organisation, always as DRAFT
+
+The create body carries no status or organisation; both come from the server. A client that
+sends them changes nothing. The same boundary rejects a non-http(s) `website`
+(`updateListingBody`), and `safeHttpUrl` in `@one/shared` guards rendering of any stored
+website link, so a `javascript:` URL can never become an `href`.
+
+- Implemented: `createListingBody`, `institutes.service.createForOrg`
+- Tested: `institutes.partner.routes.test.ts`, `e2e/tests/moderation.spec.ts`
+
+## BR-012 — A listing is submitted for review only with the details needed to verify it
+
+Name, city, address, contact phone and at least one exam. Otherwise 409
+`LISTING_INCOMPLETE` with `details.missing`. `missingForSubmission` in `@one/shared` is the
+single definition, used by the API and by the partner checklist. The status check runs
+first: submitting a listing that is not DRAFT is `INVALID_STATUS_TRANSITION`, whatever it
+contains.
+
+- Implemented: `packages/shared/src/submission.ts`, `institutes.service.submitForReviewForOrg`
+- Tested: `submission.test.ts`, `institutes.partner.routes.test.ts`, e2e
+
+## BR-013 — Publishing a listing of an unverified organisation also verifies it
+
+Same transaction; `verifiedAt` and `verifiedByClerkUserId` are never overwritten.
+Admin publish accepts only a PENDING_REVIEW listing, and the write is conditional on that
+status, so two concurrent admin decisions yield one success and one 409.
+
+- Implemented: `listings.repository.publishAndVerify`
+- Tested: `listings.admin.routes.test.ts`, e2e
+
+## BR-014 — Rejection needs a 10–500 character reason and only applies to PENDING_REVIEW
+
+The listing returns to DRAFT so the partner can fix and resubmit. Like publish, the write is
+conditional on PENDING_REVIEW, so a reject racing a publish cannot both succeed.
+
+- Implemented: `rejectListingBody`, `listings.service.rejectAsAdmin`
+- Tested: `contracts.test.ts`, `listings.admin.routes.test.ts`, e2e

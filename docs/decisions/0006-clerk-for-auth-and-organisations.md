@@ -16,8 +16,9 @@ Clerk owns identity and organisation membership. `User`, `Organization` and `Mem
 exist locally as **mirrors**, synchronised by a signature-verified webhook, so
 authorization is a database join rather than an API call on every request.
 
-`User.globalRole = ADMIN` is never written by any endpoint or webhook. It is granted only
-by a direct database statement.
+Admin rights are read from the Clerk session's `metadata.globalRole`, set in the Clerk
+dashboard; no endpoint or webhook grants them. `User.globalRole` is not used for
+authorization.
 
 ## Alternatives rejected
 
@@ -34,7 +35,7 @@ security-sensitive code in the project. Rejected for the same reason, more stron
   above the free tier.
 - Two identifier spaces now exist. `req.auth.orgId` is a Clerk id; every query uses the
   local `Organization.id`. `resolveOrganizationId()` translates, and a Clerk organisation
-  that One Academy has not onboarded is a 403 rather than a crash.
+  the mirror has not seen is provisioned on demand (ADR 0016).
 - The mirror can drift if a webhook is missed. A reconcile script is a known follow-up.
 - The webhook verifies its svix signature before touching the database, and tests assert
   that unsigned and tampered payloads write nothing.

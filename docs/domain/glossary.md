@@ -20,9 +20,12 @@ local `Organization.id` is different, and every database query uses the local on
 
 **Membership** — a user's role within an organisation: `OWNER | MANAGER | VIEWER`.
 
-**Global role** — `User.globalRole`, either `USER` or `ADMIN`. Distinct from Membership
-role: Membership is per-organisation, globalRole is platform-wide. ADMIN is granted only by
-a direct database write.
+**Global role** — `USER` or `ADMIN`, read from the Clerk session's `metadata.globalRole`.
+Distinct from Membership role: Membership is per-organisation, globalRole is platform-wide.
+The `User.globalRole` column is not used for authorization.
+
+**Verified organisation** — one whose first listing an admin has published (BR-013);
+`Organization.verifiedAt` is set.
 
 **Enquiry** — a student's lead on a listing, optionally naming a batch. Becomes the
 admissions pipeline in P3.
