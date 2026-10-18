@@ -39,7 +39,10 @@
                   "BATCH_START_DATE_PAST",
                   "BATCH_PARENT_NOT_PUBLISHED",
                   "SEATS_OUT_OF_RANGE",
-                  "INVALID_STATUS_TRANSITION"
+                  "INVALID_STATUS_TRANSITION",
+                  "LISTING_INCOMPLETE",
+                  "CITY_IMMUTABLE",
+                  "UPSTREAM_UNAVAILABLE"
                 ]
               },
               "message": {
@@ -1034,6 +1037,12 @@
                         "null"
                       ]
                     },
+                    "address": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "about": {
                       "type": [
                         "string",
@@ -1101,6 +1110,7 @@
                     "batchCount",
                     "minFeeAmount",
                     "maxFeeAmount",
+                    "address",
                     "about",
                     "website",
                     "establishedYear",
@@ -1383,6 +1393,12 @@
                           "batchCount": {
                             "type": "integer"
                           },
+                          "rejectionReason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
                           "updatedAt": {
                             "type": "string",
                             "format": "date-time"
@@ -1395,6 +1411,7 @@
                           "status",
                           "cityName",
                           "batchCount",
+                          "rejectionReason",
                           "updatedAt"
                         ]
                       }
@@ -1428,29 +1445,42 @@
             }
           }
         }
-      }
-    },
-    "/api/v1/partner/listings/{listingId}": {
-      "get": {
-        "summary": "Get an owned listing with all of its batches",
+      },
+      "post": {
+        "summary": "Create a draft listing for the active organisation",
+        "description": "Always DRAFT, always the session organisation (BR-011).",
         "security": [
           {
             "bearerAuth": []
           }
         ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string"
-            },
-            "required": true,
-            "name": "listingId",
-            "in": "path"
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 200
+                  },
+                  "citySlug": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "name",
+                  "citySlug"
+                ]
+              }
+            }
           }
-        ],
+        },
         "responses": {
-          "200": {
-            "description": "Listing detail",
+          "201": {
+            "description": "Created",
             "content": {
               "application/json": {
                 "schema": {
@@ -1480,9 +1510,42 @@
                     "batchCount": {
                       "type": "integer"
                     },
+                    "rejectionReason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "updatedAt": {
                       "type": "string",
                       "format": "date-time"
+                    },
+                    "citySlug": {
+                      "type": "string"
+                    },
+                    "locality": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "address": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "contactPhone": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "exams": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
                     },
                     "shortDescription": {
                       "type": [
@@ -1586,7 +1649,261 @@
                     "status",
                     "cityName",
                     "batchCount",
+                    "rejectionReason",
                     "updatedAt",
+                    "citySlug",
+                    "locality",
+                    "address",
+                    "contactPhone",
+                    "exams",
+                    "shortDescription",
+                    "about",
+                    "website",
+                    "batches"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not permitted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Clerk was unreachable while provisioning the organisation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/partner/listings/{listingId}": {
+      "get": {
+        "summary": "Get an owned listing with all of its batches",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "listingId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Listing detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "DRAFT",
+                        "PENDING_REVIEW",
+                        "PUBLISHED",
+                        "SUSPENDED"
+                      ]
+                    },
+                    "cityName": {
+                      "type": "string"
+                    },
+                    "batchCount": {
+                      "type": "integer"
+                    },
+                    "rejectionReason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "citySlug": {
+                      "type": "string"
+                    },
+                    "locality": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "address": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "contactPhone": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "exams": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "shortDescription": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "about": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "website": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "batches": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "exam": {
+                            "type": "string"
+                          },
+                          "mode": {
+                            "type": "string",
+                            "enum": [
+                              "ONLINE",
+                              "OFFLINE",
+                              "HYBRID"
+                            ]
+                          },
+                          "startDate": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "endDate": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          },
+                          "scheduleText": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "seatsTotal": {
+                            "type": "integer"
+                          },
+                          "seatsAvailable": {
+                            "type": "integer"
+                          },
+                          "feeAmount": {
+                            "type": "integer"
+                          },
+                          "feeCurrency": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "DRAFT",
+                              "PUBLISHED",
+                              "ARCHIVED"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "title",
+                          "exam",
+                          "mode",
+                          "startDate",
+                          "endDate",
+                          "scheduleText",
+                          "seatsTotal",
+                          "seatsAvailable",
+                          "feeAmount",
+                          "feeCurrency",
+                          "status"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "slug",
+                    "name",
+                    "status",
+                    "cityName",
+                    "batchCount",
+                    "rejectionReason",
+                    "updatedAt",
+                    "citySlug",
+                    "locality",
+                    "address",
+                    "contactPhone",
+                    "exams",
                     "shortDescription",
                     "about",
                     "website",
@@ -1693,6 +2010,28 @@
                       ]
                     },
                     "minItems": 1
+                  },
+                  "address": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 300
+                  },
+                  "contactPhone": {
+                    "type": "string",
+                    "pattern": "^\\d{10}$"
+                  },
+                  "examSlugs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minItems": 1,
+                    "maxItems": 20
+                  },
+                  "citySlug": {
+                    "type": "string",
+                    "minLength": 1
                   }
                 }
               }
@@ -1731,9 +2070,42 @@
                     "batchCount": {
                       "type": "integer"
                     },
+                    "rejectionReason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "updatedAt": {
                       "type": "string",
                       "format": "date-time"
+                    },
+                    "citySlug": {
+                      "type": "string"
+                    },
+                    "locality": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "address": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "contactPhone": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "exams": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
                     },
                     "shortDescription": {
                       "type": [
@@ -1837,7 +2209,13 @@
                     "status",
                     "cityName",
                     "batchCount",
+                    "rejectionReason",
                     "updatedAt",
+                    "citySlug",
+                    "locality",
+                    "address",
+                    "contactPhone",
+                    "exams",
                     "shortDescription",
                     "about",
                     "website",
@@ -2360,9 +2738,42 @@
                     "batchCount": {
                       "type": "integer"
                     },
+                    "rejectionReason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "updatedAt": {
                       "type": "string",
                       "format": "date-time"
+                    },
+                    "citySlug": {
+                      "type": "string"
+                    },
+                    "locality": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "address": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "contactPhone": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "exams": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
                     },
                     "shortDescription": {
                       "type": [
@@ -2466,7 +2877,13 @@
                     "status",
                     "cityName",
                     "batchCount",
+                    "rejectionReason",
                     "updatedAt",
+                    "citySlug",
+                    "locality",
+                    "address",
+                    "contactPhone",
+                    "exams",
                     "shortDescription",
                     "about",
                     "website",
@@ -2497,7 +2914,95 @@
             }
           },
           "409": {
-            "description": "Conflicting state or business rule violation",
+            "description": "INVALID_STATUS_TRANSITION (not a draft) or LISTING_INCOMPLETE (missing verification details)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/partner/reference": {
+      "get": {
+        "summary": "Cities and exam tags for the partner listing forms",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reference data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cities": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "slug": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "state": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "slug",
+                          "name",
+                          "state"
+                        ]
+                      }
+                    },
+                    "exams": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "slug": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "slug",
+                          "label"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "cities",
+                    "exams"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not permitted",
             "content": {
               "application/json": {
                 "schema": {
@@ -2589,8 +3094,36 @@
                           "organizationName": {
                             "type": "string"
                           },
+                          "newInstitute": {
+                            "type": "boolean"
+                          },
                           "cityName": {
                             "type": "string"
+                          },
+                          "address": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "contactPhone": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "website": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "submittedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
                           },
                           "updatedAt": {
                             "type": "string",
@@ -2603,7 +3136,12 @@
                           "name",
                           "status",
                           "organizationName",
+                          "newInstitute",
                           "cityName",
+                          "address",
+                          "contactPhone",
+                          "website",
+                          "submittedAt",
                           "updatedAt"
                         ]
                       }
@@ -2668,7 +3206,7 @@
     "/api/v1/admin/listings/{listingId}/publish": {
       "post": {
         "summary": "Publish a listing",
-        "description": "Only a global ADMIN may publish (BR-001).",
+        "description": "Only a global ADMIN may publish (BR-001). Publishing verifies an unverified organisation (BR-013).",
         "security": [
           {
             "bearerAuth": []
@@ -2713,8 +3251,36 @@
                     "organizationName": {
                       "type": "string"
                     },
+                    "newInstitute": {
+                      "type": "boolean"
+                    },
                     "cityName": {
                       "type": "string"
+                    },
+                    "address": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "contactPhone": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "website": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "submittedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
                     },
                     "updatedAt": {
                       "type": "string",
@@ -2727,9 +3293,373 @@
                     "name",
                     "status",
                     "organizationName",
+                    "newInstitute",
                     "cityName",
+                    "address",
+                    "contactPhone",
+                    "website",
+                    "submittedAt",
                     "updatedAt"
                   ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not permitted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state or business rule violation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/listings/{listingId}": {
+      "get": {
+        "summary": "One listing, with everything needed to review it",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "listingId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Listing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "DRAFT",
+                        "PENDING_REVIEW",
+                        "PUBLISHED",
+                        "SUSPENDED"
+                      ]
+                    },
+                    "organizationName": {
+                      "type": "string"
+                    },
+                    "newInstitute": {
+                      "type": "boolean"
+                    },
+                    "cityName": {
+                      "type": "string"
+                    },
+                    "address": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "contactPhone": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "website": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "submittedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "locality": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "shortDescription": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "about": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "modes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "ONLINE",
+                          "OFFLINE",
+                          "HYBRID"
+                        ]
+                      }
+                    },
+                    "exams": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "batchCount": {
+                      "type": "integer"
+                    },
+                    "rejectionReason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "slug",
+                    "name",
+                    "status",
+                    "organizationName",
+                    "newInstitute",
+                    "cityName",
+                    "address",
+                    "contactPhone",
+                    "website",
+                    "submittedAt",
+                    "updatedAt",
+                    "locality",
+                    "shortDescription",
+                    "about",
+                    "modes",
+                    "exams",
+                    "batchCount",
+                    "rejectionReason"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not permitted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/listings/{listingId}/reject": {
+      "post": {
+        "summary": "Return a listing under review to DRAFT with a reason",
+        "description": "Reason is 10–500 characters after trimming (BR-014).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "listingId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "DRAFT",
+                        "PENDING_REVIEW",
+                        "PUBLISHED",
+                        "SUSPENDED"
+                      ]
+                    },
+                    "organizationName": {
+                      "type": "string"
+                    },
+                    "newInstitute": {
+                      "type": "boolean"
+                    },
+                    "cityName": {
+                      "type": "string"
+                    },
+                    "address": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "contactPhone": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "website": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "submittedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "slug",
+                    "name",
+                    "status",
+                    "organizationName",
+                    "newInstitute",
+                    "cityName",
+                    "address",
+                    "contactPhone",
+                    "website",
+                    "submittedAt",
+                    "updatedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }

@@ -5,6 +5,7 @@ import { OpenApiGeneratorV31, OpenAPIRegistry } from '@asteasolutions/zod-to-ope
 import { z } from 'zod'
 import { errorEnvelope } from '../src/errors.js'
 import {
+  adminListingDetail,
   adminListingQueueQuery,
   adminListingQueueResponse,
   adminListingSummary,
@@ -14,6 +15,7 @@ import {
   compareResponse,
   createBatchBody,
   createEnquiryBody,
+  createListingBody,
   enquiryCreatedResponse,
   instituteDetail,
   instituteListResponse,
@@ -24,6 +26,8 @@ import {
   partnerBatchSummary,
   partnerListingDetail,
   partnerListingListResponse,
+  partnerReferenceResponse,
+  rejectListingBody,
   updateBatchBody,
   updateListingBody,
 } from '../src/contracts/index.js'
@@ -120,6 +124,22 @@ registry.registerPath({
 })
 
 registry.registerPath({
+  method: 'post',
+  path: '/api/v1/partner/listings',
+  summary: 'Create a draft listing for the active organisation',
+  description: 'Always DRAFT, always the session organisation (BR-011).',
+  security: secured,
+  request: { body: json(createListingBody) },
+  responses: {
+    201: { description: 'Created', ...json(partnerListingDetail) },
+    400: BAD_REQUEST,
+    401: UNAUTHENTICATED,
+    403: FORBIDDEN,
+    503: err('Clerk was unreachable while provisioning the organisation'),
+  },
+})
+
+registry.registerPath({
   method: 'get',
   path: '/api/v1/partner/listings/{listingId}',
   summary: 'Get an owned listing with all of its batches',
@@ -189,11 +209,25 @@ registry.registerPath({
     200: { description: 'Submitted', ...json(partnerListingDetail) },
     401: UNAUTHENTICATED,
     403: FORBIDDEN,
-    409: CONFLICT,
+    409: err(
+      'INVALID_STATUS_TRANSITION (not a draft) or LISTING_INCOMPLETE (missing verification details)',
+    ),
   },
 })
 
 // --- Admin -----------------------------------------------------------------
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/partner/reference',
+  summary: 'Cities and exam tags for the partner listing forms',
+  security: secured,
+  responses: {
+    200: { description: 'Reference data', ...json(partnerReferenceResponse) },
+    401: UNAUTHENTICATED,
+    403: FORBIDDEN,
+  },
+})
 
 registry.registerPath({
   method: 'get',
@@ -213,11 +247,43 @@ registry.registerPath({
   method: 'post',
   path: '/api/v1/admin/listings/{listingId}/publish',
   summary: 'Publish a listing',
-  description: 'Only a global ADMIN may publish (BR-001).',
+  description:
+    'Only a global ADMIN may publish (BR-001). Publishing verifies an unverified organisation (BR-013).',
   security: secured,
   request: { params: z.object({ listingId: z.string() }) },
   responses: {
     200: { description: 'Published', ...json(adminListingSummary) },
+    401: UNAUTHENTICATED,
+    403: FORBIDDEN,
+    404: NOT_FOUND,
+    409: CONFLICT,
+  },
+})
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/admin/listings/{listingId}',
+  summary: 'One listing, with everything needed to review it',
+  security: secured,
+  request: { params: z.object({ listingId: z.string() }) },
+  responses: {
+    200: { description: 'Listing', ...json(adminListingDetail) },
+    401: UNAUTHENTICATED,
+    403: FORBIDDEN,
+    404: NOT_FOUND,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/admin/listings/{listingId}/reject',
+  summary: 'Return a listing under review to DRAFT with a reason',
+  description: 'Reason is 10–500 characters after trimming (BR-014).',
+  security: secured,
+  request: { params: z.object({ listingId: z.string() }), body: json(rejectListingBody) },
+  responses: {
+    200: { description: 'Rejected', ...json(adminListingSummary) },
+    400: BAD_REQUEST,
     401: UNAUTHENTICATED,
     403: FORBIDDEN,
     404: NOT_FOUND,
