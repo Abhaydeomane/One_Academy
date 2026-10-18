@@ -99,14 +99,14 @@ describe('status transitions', () => {
 
   it('publishes a pending listing and stamps publishedAt', async () => {
     await submitForReview(seed.draftListingId)
-    await publish(seed.draftListingId)
+    await publish(seed.draftListingId, 'u-admin')
     const listing = await prisma.listing.findUniqueOrThrow({ where: { id: seed.draftListingId } })
     expect(listing.status).toBe('PUBLISHED')
     expect(listing.publishedAt).toBeInstanceOf(Date)
   })
 
   it('refuses to publish an already published listing', async () => {
-    await expect(publish(seed.publishedListingId)).rejects.toMatchObject({
+    await expect(publish(seed.publishedListingId, 'u-admin')).rejects.toMatchObject({
       code: 'INVALID_STATUS_TRANSITION',
     })
   })

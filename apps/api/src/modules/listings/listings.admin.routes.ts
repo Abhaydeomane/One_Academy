@@ -2,10 +2,12 @@ import { Router } from 'express'
 import {
   adminListingQueueQuery,
   listingIdParam,
+  rejectListingBody,
   type AdminListingQueueQuery,
   type ListingIdParam,
+  type RejectListingBody,
 } from '@one/shared'
-import { requireAdmin, requireAuth } from '../../middleware/auth.js'
+import { currentAuth, requireAdmin, requireAuth } from '../../middleware/auth.js'
 import { validate, validated } from '../../middleware/validate.js'
 import * as listings from './listings.service.js'
 
@@ -19,11 +21,26 @@ adminListingsRouter.get('/', validate({ query: adminListingQueueQuery }), async 
   res.json(await listings.listForModeration(query))
 })
 
+adminListingsRouter.get('/:listingId', validate({ params: listingIdParam }), async (req, res) => {
+  const { listingId } = validated<ListingIdParam>(req, 'params')
+  res.json(await listings.getForModeration(listingId))
+})
+
 adminListingsRouter.post(
   '/:listingId/publish',
   validate({ params: listingIdParam }),
   async (req, res) => {
     const { listingId } = validated<ListingIdParam>(req, 'params')
-    res.json(await listings.publishAsAdmin(listingId))
+    res.json(await listings.publishAsAdmin(listingId, currentAuth(req).userId))
+  },
+)
+
+adminListingsRouter.post(
+  '/:listingId/reject',
+  validate({ params: listingIdParam, body: rejectListingBody }),
+  async (req, res) => {
+    const { listingId } = validated<ListingIdParam>(req, 'params')
+    const { reason } = validated<RejectListingBody>(req, 'body')
+    res.json(await listings.rejectAsAdmin(listingId, reason))
   },
 )

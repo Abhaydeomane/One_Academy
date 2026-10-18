@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { prisma } from '@one/db'
-import { adminListingQueueResponse, adminListingSummary } from '@one/shared'
+import { adminListingDetail, adminListingQueueResponse, adminListingSummary } from '@one/shared'
 import { resetDb, seedMinimal, type MinimalSeed } from '../../../test/helpers/db.js'
 import { testApp } from '../../../test/helpers/app.js'
 
@@ -117,5 +117,142 @@ describe('POST /api/v1/admin/listings/:listingId/publish (BR-001)', () => {
       .set('x-test-auth', asAdmin)
 
     expect((await testApp().get(`/api/v1/institutes/${seed.draftSlug}`)).status).toBe(200)
+  })
+})
+
+const asAdmin2 = JSON.stringify({ userId: 'u-admin-2', globalRole: 'ADMIN' })
+
+async function makePending(listingId: string) {
+  await prisma.listing.update({
+    where: { id: listingId },
+    data: { status: 'PENDING_REVIEW', submittedAt: new Date() },
+  })
+}
+
+describe('queue fields', () => {
+  it('flags a listing whose organisation is unverified as a new institute', async () => {
+    await makePending(seed.draftListingId)
+    const res = await testApp().get('/api/v1/admin/listings').set('x-test-auth', asAdmin)
+    const item = adminListingQueueResponse.parse(res.body).items[0]
+    expect(item).toMatchObject({ newInstitute: true, contactPhone: '9000000001' })
+    expect(item?.submittedAt).not.toBeNull()
+  })
+
+  it('does not flag a verified organisation', async () => {
+    await prisma.organization.update({
+      where: { id: seed.orgId },
+      data: { verifiedAt: new Date() },
+    })
+    await makePending(seed.draftListingId)
+    const res = await testApp().get('/api/v1/admin/listings').set('x-test-auth', asAdmin)
+    expect(adminListingQueueResponse.parse(res.body).items[0]?.newInstitute).toBe(false)
+  })
+})
+
+describe('GET /api/v1/admin/listings/:listingId', () => {
+  it('returns everything the review screen needs', async () => {
+    await makePending(seed.draftListingId)
+    const res = await testApp()
+      .get(`/api/v1/admin/listings/${seed.draftListingId}`)
+      .set('x-test-auth', asAdmin)
+    expect(res.status).toBe(200)
+    expect(adminListingDetail.parse(res.body)).toMatchObject({
+      address: '1 Test Road, Pune 411001',
+      exams: ['jee'],
+      modes: ['ONLINE'],
+      batchCount: 0,
+    })
+  })
+
+  it('403s a non-admin', async () => {
+    const res = await testApp()
+      .get(`/api/v1/admin/listings/${seed.draftListingId}`)
+      .set('x-test-auth', asUser)
+    expect(res.status).toBe(403)
+  })
+})
+
+describe('publish verifies the organisation (BR-013)', () => {
+  it('sets verifiedAt and the verifying admin on first publish', async () => {
+    await makePending(seed.draftListingId)
+    const res = await testApp()
+      .post(`/api/v1/admin/listings/${seed.draftListingId}/publish`)
+      .set('x-test-auth', asAdmin)
+    expect(res.status).toBe(200)
+
+    const org = await prisma.organization.findUniqueOrThrow({ where: { id: seed.orgId } })
+    expect(org.verifiedAt).not.toBeNull()
+    expect(org.verifiedByClerkUserId).toBe('u-admin')
+  })
+
+  it('never overwrites an existing verification', async () => {
+    const original = new Date('2026-02-01T00:00:00Z')
+    await prisma.organization.update({
+      where: { id: seed.orgId },
+      data: { verifiedAt: original, verifiedByClerkUserId: 'u-admin' },
+    })
+    await makePending(seed.draftListingId)
+    await testApp()
+      .post(`/api/v1/admin/listings/${seed.draftListingId}/publish`)
+      .set('x-test-auth', asAdmin2)
+
+    const org = await prisma.organization.findUniqueOrThrow({ where: { id: seed.orgId } })
+    expect(org.verifiedAt).toEqual(original)
+    expect(org.verifiedByClerkUserId).toBe('u-admin')
+  })
+
+  it('409s a second publish of the same listing', async () => {
+    await makePending(seed.draftListingId)
+    const path = `/api/v1/admin/listings/${seed.draftListingId}/publish`
+    await testApp().post(path).set('x-test-auth', asAdmin)
+    const again = await testApp().post(path).set('x-test-auth', asAdmin)
+    expect(again.status).toBe(409)
+    expect(again.body.error.code).toBe('INVALID_STATUS_TRANSITION')
+  })
+})
+
+describe('POST /api/v1/admin/listings/:listingId/reject (BR-014)', () => {
+  const path = () => `/api/v1/admin/listings/${seed.draftListingId}/reject`
+
+  it('returns the listing to DRAFT with the reason', async () => {
+    await makePending(seed.draftListingId)
+    const res = await testApp()
+      .post(path())
+      .set('x-test-auth', asAdmin)
+      .send({ reason: 'The phone number did not answer.' })
+
+    expect(res.status).toBe(200)
+    const row = await prisma.listing.findUniqueOrThrow({ where: { id: seed.draftListingId } })
+    expect(row.status).toBe('DRAFT')
+    expect(row.rejectionReason).toBe('The phone number did not answer.')
+    const org = await prisma.organization.findUniqueOrThrow({ where: { id: seed.orgId } })
+    expect(org.verifiedAt).toBeNull()
+  })
+
+  it('400s a reason that is too short after trimming', async () => {
+    await makePending(seed.draftListingId)
+    const res = await testApp()
+      .post(path())
+      .set('x-test-auth', asAdmin)
+      .send({ reason: '   no   ' })
+    expect(res.status).toBe(400)
+  })
+
+  it('409s a listing that is not waiting for review', async () => {
+    const res = await testApp()
+      .post(path())
+      .set('x-test-auth', asAdmin)
+      .send({ reason: 'The phone number did not answer.' })
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('INVALID_STATUS_TRANSITION')
+  })
+
+  it('403s a non-admin', async () => {
+    await makePending(seed.draftListingId)
+    const res = await testApp()
+      .post(path())
+      .set('x-test-auth', asUser)
+      .send({ reason: 'The phone number did not answer.' })
+    expect(res.status).toBe(403)
   })
 })

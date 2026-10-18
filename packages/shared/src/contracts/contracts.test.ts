@@ -8,6 +8,7 @@ import {
   instituteListResponse,
   instituteSummary,
   listInstitutesQuery,
+  rejectListingBody,
   updateListingBody,
 } from './index.js'
 
@@ -234,5 +235,21 @@ describe('compareQuery', () => {
 
   it('coerces a single batch pin into an array', () => {
     expect(compareQuery.parse({ slug: ['a', 'b'], batch: 'a:b1' }).batch).toEqual(['a:b1'])
+  })
+})
+
+describe('rejectListingBody (BR-014)', () => {
+  it('trims before checking the minimum', () => {
+    expect(rejectListingBody.safeParse({ reason: '   too short  ' }).success).toBe(false)
+  })
+
+  it('accepts and trims a real reason', () => {
+    expect(rejectListingBody.parse({ reason: '  Phone number did not answer  ' }).reason).toBe(
+      'Phone number did not answer',
+    )
+  })
+
+  it('rejects more than 500 characters', () => {
+    expect(rejectListingBody.safeParse({ reason: 'x'.repeat(501) }).success).toBe(false)
   })
 })

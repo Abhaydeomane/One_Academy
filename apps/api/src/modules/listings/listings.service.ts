@@ -1,4 +1,9 @@
-import type { AdminListingQueueQuery, AdminListingSummary, Paginated } from '@one/shared'
+import type {
+  AdminListingDetail,
+  AdminListingQueueQuery,
+  AdminListingSummary,
+  Paginated,
+} from '@one/shared'
 import { ConflictError, ForbiddenError, NotFoundError } from '../../lib/errors.js'
 import * as repo from './listings.repository.js'
 
@@ -55,7 +60,7 @@ export async function submitForReview(listingId: string) {
   await repo.markSubmitted(listingId)
 }
 
-export async function publish(listingId: string) {
+export async function publish(listingId: string, verifierClerkUserId: string) {
   const listing = await repo.findById(listingId)
   if (!listing) throw new NotFoundError('Listing not found')
   if (listing.status !== 'PENDING_REVIEW' && listing.status !== 'DRAFT') {
@@ -64,7 +69,7 @@ export async function publish(listingId: string) {
       `Cannot publish a listing in status ${listing.status}`,
     )
   }
-  await repo.updateStatus(listingId, 'PUBLISHED', new Date())
+  await repo.publishAndVerify(listingId, listing.organizationId, new Date(), verifierClerkUserId)
 }
 
 export async function isPublished(listingId: string) {
@@ -72,15 +77,35 @@ export async function isPublished(listingId: string) {
   return listing?.status === 'PUBLISHED'
 }
 
-function toAdminSummary(row: repo.ModerationRow): AdminListingSummary {
+function toAdminSummary(row: repo.ModerationRow | repo.ModerationDetailRow): AdminListingSummary {
   return {
     id: row.id,
     slug: row.slug,
     name: row.name,
     status: row.status,
     organizationName: row.organization.name,
+    newInstitute: row.organization.verifiedAt === null,
     cityName: row.city.name,
+    address: row.address,
+    contactPhone: row.contactPhone,
+    website: row.instituteProfile?.website ?? null,
+    submittedAt: row.submittedAt ? row.submittedAt.toISOString() : null,
     updatedAt: row.updatedAt.toISOString(),
+  }
+}
+
+export async function getForModeration(listingId: string): Promise<AdminListingDetail> {
+  const row = await repo.findModerationDetail(listingId)
+  if (!row) throw new NotFoundError('Listing not found')
+  return {
+    ...toAdminSummary(row),
+    locality: row.locality,
+    shortDescription: row.shortDescription,
+    about: row.instituteProfile?.about ?? null,
+    modes: row.instituteProfile?.modes ?? [],
+    exams: row.tags.filter((entry) => entry.tag.kind === 'EXAM').map((entry) => entry.tag.slug),
+    batchCount: row._count.batches,
+    rejectionReason: row.rejectionReason,
   }
 }
 
@@ -95,8 +120,31 @@ export async function listForModeration(
   return { items: rows.map(toAdminSummary), total, page: query.page, limit: query.limit }
 }
 
-export async function publishAsAdmin(listingId: string): Promise<AdminListingSummary> {
-  await publish(listingId)
+export async function publishAsAdmin(
+  listingId: string,
+  adminClerkUserId: string,
+): Promise<AdminListingSummary> {
+  await publish(listingId, adminClerkUserId)
+  const row = await repo.findModerationRow(listingId)
+  if (!row) throw new NotFoundError('Listing not found')
+  return toAdminSummary(row)
+}
+
+/// BR-014: only a listing waiting for review can be rejected, and it goes
+/// back to DRAFT so the partner can fix it.
+export async function rejectAsAdmin(
+  listingId: string,
+  reason: string,
+): Promise<AdminListingSummary> {
+  const listing = await repo.findById(listingId)
+  if (!listing) throw new NotFoundError('Listing not found')
+  if (listing.status !== 'PENDING_REVIEW') {
+    throw new ConflictError(
+      'INVALID_STATUS_TRANSITION',
+      `Only a listing waiting for review can be rejected; this listing is ${listing.status}`,
+    )
+  }
+  await repo.markRejected(listingId, reason)
   const row = await repo.findModerationRow(listingId)
   if (!row) throw new NotFoundError('Listing not found')
   return toAdminSummary(row)

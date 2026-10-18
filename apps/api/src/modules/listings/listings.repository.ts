@@ -48,14 +48,20 @@ export async function updateStatus(
   })
 }
 
+type Mode = 'ONLINE' | 'OFFLINE' | 'HYBRID'
+
 export type ModerationRow = {
   id: string
   slug: string
   name: string
   status: ListingStatus
   updatedAt: Date
-  organization: { name: string }
+  submittedAt: Date | null
+  address: string | null
+  contactPhone: string | null
+  organization: { name: string; verifiedAt: Date | null }
   city: { name: string }
+  instituteProfile: { website: string | null } | null
 }
 
 const MODERATION_SELECT = {
@@ -64,8 +70,31 @@ const MODERATION_SELECT = {
   name: true,
   status: true,
   updatedAt: true,
-  organization: { select: { name: true } },
+  submittedAt: true,
+  address: true,
+  contactPhone: true,
+  organization: { select: { name: true, verifiedAt: true } },
   city: { select: { name: true } },
+  instituteProfile: { select: { website: true } },
+} as const
+
+export type ModerationDetailRow = Omit<ModerationRow, 'instituteProfile'> & {
+  locality: string | null
+  shortDescription: string | null
+  rejectionReason: string | null
+  instituteProfile: { website: string | null; about: string | null; modes: Mode[] } | null
+  tags: { tag: { slug: string; kind: 'EXAM' | 'AMENITY' | 'FACILITY' } }[]
+  _count: { batches: number }
+}
+
+const MODERATION_DETAIL_SELECT = {
+  ...MODERATION_SELECT,
+  locality: true,
+  shortDescription: true,
+  rejectionReason: true,
+  instituteProfile: { select: { website: true, about: true, modes: true } },
+  tags: { select: { tag: { select: { slug: true, kind: true } } } },
+  _count: { select: { batches: true } },
 } as const
 
 export async function listByStatus(
@@ -76,7 +105,7 @@ export async function listByStatus(
   const [rows, total] = await Promise.all([
     prisma.listing.findMany({
       where: { status },
-      orderBy: { updatedAt: 'asc' },
+      orderBy: [{ submittedAt: { sort: 'asc', nulls: 'last' } }, { updatedAt: 'asc' }],
       skip,
       take,
       select: MODERATION_SELECT,
@@ -95,4 +124,37 @@ export async function markSubmitted(id: string): Promise<void> {
     where: { id },
     data: { status: 'PENDING_REVIEW', submittedAt: new Date(), rejectionReason: null },
   })
+}
+
+export async function findModerationDetail(id: string): Promise<ModerationDetailRow | null> {
+  return prisma.listing.findUnique({ where: { id }, select: MODERATION_DETAIL_SELECT })
+}
+
+export async function markRejected(id: string, reason: string): Promise<void> {
+  await prisma.listing.update({
+    where: { id },
+    data: { status: 'DRAFT', rejectionReason: reason },
+  })
+}
+
+/// BR-013 needs the listing and its organisation to change together. The
+/// organisation write lives here rather than behind accounts.service because
+/// it must share the transaction; the verifiedAt: null guard means an existing
+/// verification is never overwritten.
+export async function publishAndVerify(
+  id: string,
+  organizationId: string,
+  at: Date,
+  verifierClerkUserId: string,
+): Promise<void> {
+  await prisma.$transaction([
+    prisma.listing.update({
+      where: { id },
+      data: { status: 'PUBLISHED', publishedAt: at, rejectionReason: null },
+    }),
+    prisma.organization.updateMany({
+      where: { id: organizationId, verifiedAt: null },
+      data: { verifiedAt: at, verifiedByClerkUserId: verifierClerkUserId },
+    }),
+  ])
 }
