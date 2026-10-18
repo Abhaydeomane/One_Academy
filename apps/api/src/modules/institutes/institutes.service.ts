@@ -1,3 +1,4 @@
+import { missingForSubmission } from '@one/shared'
 import type {
   BatchSummary,
   CreateBatchBody,
@@ -20,6 +21,7 @@ import * as accounts from '../accounts/accounts.service.js'
 import * as batches from '../batches/batches.service.js'
 import {
   assertOrgOwnsListing,
+  changeSlug,
   isSlugTaken,
   resolvePublishedSlug,
   submitForReview,
@@ -139,6 +141,9 @@ export async function listPublishedBatchesBySlug(slug: string): Promise<BatchSum
 
 // --- Partner-facing reads and writes ---------------------------------------
 
+const examSlugs = (tags: { tag: { slug: string; kind: string } }[]) =>
+  tags.filter((entry) => entry.tag.kind === 'EXAM').map((entry) => entry.tag.slug)
+
 function toPartnerSummary(row: repo.PartnerListingRow): PartnerListingSummary {
   return {
     id: row.id,
@@ -147,6 +152,7 @@ function toPartnerSummary(row: repo.PartnerListingRow): PartnerListingSummary {
     status: row.status,
     cityName: row.city.name,
     batchCount: row._count.batches,
+    rejectionReason: row.rejectionReason,
     updatedAt: row.updatedAt.toISOString(),
   }
 }
@@ -166,6 +172,11 @@ export async function getForOrg(
 
   return {
     ...toPartnerSummary(row),
+    citySlug: row.city.slug,
+    locality: row.locality,
+    address: row.address,
+    contactPhone: row.contactPhone,
+    exams: examSlugs(row.tags),
     shortDescription: row.shortDescription,
     about: row.instituteProfile?.about ?? null,
     website: row.instituteProfile?.website ?? null,
@@ -192,7 +203,25 @@ export async function submitForReviewForOrg(
   listingId: string,
   organizationId: string,
 ): Promise<PartnerListingDetail> {
-  await assertOrgOwnsListing(listingId, organizationId)
+  const current = await getForOrg(listingId, organizationId)
+  // A non-draft listing is rejected by the status transition, not the gate.
+  const missing =
+    current.status !== 'DRAFT'
+      ? []
+      : missingForSubmission({
+          name: current.name,
+          cityName: current.cityName,
+          address: current.address,
+          contactPhone: current.contactPhone,
+          exams: current.exams,
+        })
+  if (missing.length > 0) {
+    throw new ConflictError(
+      'LISTING_INCOMPLETE',
+      'Add the missing details before submitting for review',
+      { missing },
+    )
+  }
   await submitForReview(listingId)
   return getForOrg(listingId, organizationId)
 }
@@ -203,6 +232,39 @@ export async function updateForOrg(
   body: UpdateListingBody,
 ): Promise<PartnerListingDetail> {
   await assertOrgOwnsListing(listingId, organizationId)
+  const current = await repo.findByIdForPartner(listingId)
+  if (!current) throw new NotFoundError('Listing not found')
+
+  let cityId: string | undefined
+  if (body.citySlug !== undefined && body.citySlug !== current.city.slug) {
+    if (current.status !== 'DRAFT') {
+      throw new ConflictError(
+        'CITY_IMMUTABLE',
+        'A listing city can only change while it is a draft',
+      )
+    }
+    const city = await repo.findCityBySlug(body.citySlug)
+    if (!city) {
+      throw new BadRequestError('Unknown city', { fieldErrors: { citySlug: ['Unknown city'] } })
+    }
+    cityId = city.id
+    // The slug embeds the city. A draft has never been public, so the slug is
+    // regenerated rather than redirected; BR-002 starts at publication.
+    await changeSlug(
+      listingId,
+      await availableListingSlug(slugify(`${body.name ?? current.name} ${city.slug}`)),
+    )
+  }
+
+  let examTagIds: string[] | undefined
+  if (body.examSlugs) {
+    const wanted = [...new Set(body.examSlugs)]
+    const tags = await repo.findExamTagIds(wanted)
+    if (tags.length !== wanted.length) {
+      throw new BadRequestError('Unknown exam', { fieldErrors: { examSlugs: ['Unknown exam'] } })
+    }
+    examTagIds = tags.map((tag) => tag.id)
+  }
 
   await repo.updateListingAndProfile(
     listingId,
@@ -210,6 +272,9 @@ export async function updateForOrg(
       ...(body.name ? { name: body.name } : {}),
       ...(body.shortDescription === undefined ? {} : { shortDescription: body.shortDescription }),
       ...(body.locality === undefined ? {} : { locality: body.locality }),
+      ...(body.address === undefined ? {} : { address: body.address }),
+      ...(body.contactPhone === undefined ? {} : { contactPhone: body.contactPhone }),
+      ...(cityId ? { cityId } : {}),
     },
     {
       ...(body.about === undefined ? {} : { about: body.about }),
@@ -218,6 +283,7 @@ export async function updateForOrg(
       ...(body.facultyCount === undefined ? {} : { facultyCount: body.facultyCount }),
       ...(body.modes === undefined ? {} : { modes: body.modes }),
     },
+    examTagIds,
   )
 
   return getForOrg(listingId, organizationId)

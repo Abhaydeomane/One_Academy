@@ -86,6 +86,9 @@ export async function seedMinimal(): Promise<MinimalSeed> {
       status: 'DRAFT',
       organizationId: org.id,
       cityId: city.id,
+      address: '1 Test Road, Pune 411001',
+      contactPhone: '9000000001',
+      tags: { create: [{ tagId: exam.id }] },
       instituteProfile: { create: { modes: ['ONLINE'] } },
     },
   })

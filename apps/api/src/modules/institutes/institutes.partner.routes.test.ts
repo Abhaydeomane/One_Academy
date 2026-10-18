@@ -320,3 +320,99 @@ describe('POST /api/v1/partner/listings (BR-011)', () => {
     expect(res.status).toBe(400)
   })
 })
+
+describe('PATCH /api/v1/partner/listings/:listingId — verification details', () => {
+  it('stores address, phone and exams and returns them to the owner', async () => {
+    const res = await testApp()
+      .patch(`/api/v1/partner/listings/${seed.draftListingId}`)
+      .set('x-test-auth', auth('co_alpha'))
+      .send({ address: '9 MG Road, Pune 411001', contactPhone: '9876543210', examSlugs: ['jee'] })
+
+    expect(res.status).toBe(200)
+    const body = partnerListingDetail.parse(res.body)
+    expect(body).toMatchObject({
+      address: '9 MG Road, Pune 411001',
+      contactPhone: '9876543210',
+      exams: ['jee'],
+    })
+  })
+
+  it('400s an unknown exam and changes nothing', async () => {
+    const res = await testApp()
+      .patch(`/api/v1/partner/listings/${seed.draftListingId}`)
+      .set('x-test-auth', auth('co_alpha'))
+      .send({ examSlugs: ['jee', 'astrology'] })
+    expect(res.status).toBe(400)
+  })
+
+  it('400s a malformed phone', async () => {
+    const res = await testApp()
+      .patch(`/api/v1/partner/listings/${seed.draftListingId}`)
+      .set('x-test-auth', auth('co_alpha'))
+      .send({ contactPhone: '+91 98765 43210' })
+    expect(res.status).toBe(400)
+  })
+
+  it('moves a draft to another city and regenerates its slug', async () => {
+    await prisma.city.create({ data: { slug: 'mumbai', name: 'Mumbai', state: 'Maharashtra' } })
+    const res = await testApp()
+      .patch(`/api/v1/partner/listings/${seed.draftListingId}`)
+      .set('x-test-auth', auth('co_alpha'))
+      .send({ citySlug: 'mumbai' })
+
+    const body = partnerListingDetail.parse(res.body)
+    expect(body.citySlug).toBe('mumbai')
+    expect(body.slug).toBe('draft-academy-mumbai')
+  })
+
+  it('409s CITY_IMMUTABLE on a published listing', async () => {
+    await prisma.city.create({ data: { slug: 'mumbai', name: 'Mumbai', state: 'Maharashtra' } })
+    const res = await testApp()
+      .patch(`/api/v1/partner/listings/${seed.publishedListingId}`)
+      .set('x-test-auth', auth('co_alpha'))
+      .send({ citySlug: 'mumbai' })
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('CITY_IMMUTABLE')
+  })
+})
+
+describe('POST /api/v1/partner/listings/:listingId/submit (BR-012)', () => {
+  it.each([
+    ['address', { address: null }],
+    ['contactPhone', { contactPhone: null }],
+  ] as const)('409s LISTING_INCOMPLETE naming %s', async (field, data) => {
+    await prisma.listing.update({ where: { id: seed.draftListingId }, data })
+    const res = await testApp()
+      .post(`/api/v1/partner/listings/${seed.draftListingId}/submit`)
+      .set('x-test-auth', auth('co_alpha'))
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('LISTING_INCOMPLETE')
+    expect(res.body.error.details.missing).toEqual([field])
+  })
+
+  it('409s naming exams when none are set', async () => {
+    await prisma.listingTag.deleteMany({ where: { listingId: seed.draftListingId } })
+    const res = await testApp()
+      .post(`/api/v1/partner/listings/${seed.draftListingId}/submit`)
+      .set('x-test-auth', auth('co_alpha'))
+    expect(res.body.error.details.missing).toEqual(['exams'])
+  })
+
+  it('submits a complete listing, stamps submittedAt and clears the rejection reason', async () => {
+    await prisma.listing.update({
+      where: { id: seed.draftListingId },
+      data: { rejectionReason: 'Phone did not answer' },
+    })
+    const res = await testApp()
+      .post(`/api/v1/partner/listings/${seed.draftListingId}/submit`)
+      .set('x-test-auth', auth('co_alpha'))
+
+    expect(res.status).toBe(200)
+    expect(partnerListingDetail.parse(res.body)).toMatchObject({
+      status: 'PENDING_REVIEW',
+      rejectionReason: null,
+    })
+    const row = await prisma.listing.findUniqueOrThrow({ where: { id: seed.draftListingId } })
+    expect(row.submittedAt).not.toBeNull()
+  })
+})

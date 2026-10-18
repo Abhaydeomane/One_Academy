@@ -25,6 +25,8 @@ test.beforeAll(async () => {
     data: { name: 'Beta Coaching', slug: 'beta-coaching', clerkOrgId: 'co_e2e' },
   })
 
+  const exam = await prisma.tag.create({ data: { slug: 'neet', label: 'NEET', kind: 'EXAM' } })
+
   const listing = await prisma.listing.create({
     data: {
       vertical: 'INSTITUTE',
@@ -34,6 +36,9 @@ test.beforeAll(async () => {
       organizationId: org.id,
       cityId: city.id,
       shortDescription: 'New centre awaiting review',
+      address: '5 Linking Road, Bandra, Mumbai 400050',
+      contactPhone: '9000000002',
+      tags: { create: [{ tagId: exam.id }] },
       instituteProfile: { create: { modes: ['HYBRID'] } },
     },
   })

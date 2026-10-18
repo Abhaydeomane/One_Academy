@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { phoneSchema } from '../phone.js'
 import { modeSchema } from './institutes.js'
 import { batchSummary } from './batches.js'
 
@@ -23,6 +24,7 @@ export const partnerListingSummary = z.object({
   status: listingStatusSchema,
   cityName: z.string(),
   batchCount: z.number().int(),
+  rejectionReason: z.string().nullable(),
   updatedAt: z.iso.datetime(),
 })
 export type PartnerListingSummary = z.infer<typeof partnerListingSummary>
@@ -36,6 +38,12 @@ export const partnerBatchSummary = batchSummary.extend({ status: batchStatusSche
 export type PartnerBatchSummary = z.infer<typeof partnerBatchSummary>
 
 export const partnerListingDetail = partnerListingSummary.extend({
+  citySlug: z.string(),
+  locality: z.string().nullable(),
+  address: z.string().nullable(),
+  /// Private (spec §4): partner and admin contracts only.
+  contactPhone: z.string().nullable(),
+  exams: z.array(z.string()),
   shortDescription: z.string().nullable(),
   about: z.string().nullable(),
   website: z.string().nullable(),
@@ -53,6 +61,10 @@ export const updateListingBody = z
     establishedYear: z.number().int().min(1900).max(2100).optional(),
     facultyCount: z.number().int().min(0).max(10000).optional(),
     modes: z.array(modeSchema).min(1).optional(),
+    address: z.string().trim().min(5).max(300).optional(),
+    contactPhone: phoneSchema.optional(),
+    examSlugs: z.array(z.string().min(1)).min(1).max(20).optional(),
+    citySlug: z.string().min(1).optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     error: 'At least one field must be provided',

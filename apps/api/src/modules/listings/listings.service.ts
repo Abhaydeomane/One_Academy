@@ -52,7 +52,7 @@ export async function submitForReview(listingId: string) {
       `Only a DRAFT listing can be submitted; this listing is ${listing.status}`,
     )
   }
-  await repo.updateStatus(listingId, 'PENDING_REVIEW')
+  await repo.markSubmitted(listingId)
 }
 
 export async function publish(listingId: string) {

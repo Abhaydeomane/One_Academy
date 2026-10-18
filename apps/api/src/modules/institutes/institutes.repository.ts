@@ -110,10 +110,15 @@ export type PartnerListingRow = {
   slug: string
   name: string
   status: 'DRAFT' | 'PENDING_REVIEW' | 'PUBLISHED' | 'SUSPENDED'
+  locality: string | null
+  address: string | null
+  contactPhone: string | null
+  rejectionReason: string | null
   shortDescription: string | null
   updatedAt: Date
-  city: { name: string }
+  city: { name: string; slug: string }
   instituteProfile: { about: string | null; website: string | null } | null
+  tags: { tag: { slug: string; kind: 'EXAM' | 'AMENITY' | 'FACILITY' } }[]
   _count: { batches: number }
 }
 
@@ -122,10 +127,15 @@ const PARTNER_SELECT = {
   slug: true,
   name: true,
   status: true,
+  locality: true,
+  address: true,
+  contactPhone: true,
+  rejectionReason: true,
   shortDescription: true,
   updatedAt: true,
-  city: { select: { name: true } },
+  city: { select: { name: true, slug: true } },
   instituteProfile: { select: { about: true, website: true } },
+  tags: { select: { tag: { select: { slug: true, kind: true } } } },
   _count: { select: { batches: true } },
 } as const
 
@@ -141,9 +151,23 @@ export async function findByIdForPartner(id: string): Promise<PartnerListingRow 
   return prisma.listing.findUnique({ where: { id }, select: PARTNER_SELECT })
 }
 
+export async function findExamTagIds(slugs: string[]): Promise<{ id: string; slug: string }[]> {
+  return prisma.tag.findMany({
+    where: { kind: 'EXAM', slug: { in: slugs } },
+    select: { id: true, slug: true },
+  })
+}
+
 export async function updateListingAndProfile(
   id: string,
-  listing: { name?: string; shortDescription?: string; locality?: string },
+  listing: {
+    name?: string
+    shortDescription?: string
+    locality?: string
+    address?: string
+    contactPhone?: string
+    cityId?: string
+  },
   profile: {
     about?: string
     website?: string
@@ -151,15 +175,25 @@ export async function updateListingAndProfile(
     facultyCount?: number
     modes?: Mode[]
   },
+  examTagIds?: string[],
 ): Promise<void> {
-  await prisma.listing.update({
-    where: { id },
-    data: {
-      ...listing,
-      ...(Object.keys(profile).length > 0
-        ? { instituteProfile: { upsert: { create: profile, update: profile } } }
-        : {}),
-    },
+  await prisma.$transaction(async (tx) => {
+    await tx.listing.update({
+      where: { id },
+      data: {
+        ...listing,
+        ...(Object.keys(profile).length > 0
+          ? { instituteProfile: { upsert: { create: profile, update: profile } } }
+          : {}),
+      },
+    })
+    if (examTagIds) {
+      // Exams are replaced as a set; amenity and facility tags are untouched.
+      await tx.listingTag.deleteMany({ where: { listingId: id, tag: { kind: 'EXAM' } } })
+      await tx.listingTag.createMany({
+        data: examTagIds.map((tagId) => ({ listingId: id, tagId })),
+      })
+    }
   })
 }
 

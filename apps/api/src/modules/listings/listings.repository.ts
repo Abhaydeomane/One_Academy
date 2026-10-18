@@ -89,3 +89,10 @@ export async function listByStatus(
 export async function findModerationRow(id: string): Promise<ModerationRow | null> {
   return prisma.listing.findUnique({ where: { id }, select: MODERATION_SELECT })
 }
+
+export async function markSubmitted(id: string): Promise<void> {
+  await prisma.listing.update({
+    where: { id },
+    data: { status: 'PENDING_REVIEW', submittedAt: new Date(), rejectionReason: null },
+  })
+}
