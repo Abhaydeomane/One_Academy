@@ -1,6 +1,6 @@
 # Flow: Listing lifecycle
 
-Last verified against commit: 48b81f2ee7b7b5d519053a5c70c63093eb1597d9
+Last verified against commit: b33114e3c11fdb170636f06a99053a48345b2f50
 
 ## Purpose
 
@@ -106,19 +106,22 @@ BR-001, BR-002, BR-003, BR-004, BR-005, BR-010, BR-012, BR-013, BR-014
 
 ## Failure modes
 
-| Condition                                    | API response                     | What the partner sees                                            |
-| -------------------------------------------- | -------------------------------- | ---------------------------------------------------------------- |
-| Listing owned by another organisation        | 403 `FORBIDDEN`                  | "You do not have permission to change this listing."             |
-| Submitting a non-DRAFT listing               | 409 `INVALID_STATUS_TRANSITION`  | "This listing cannot be submitted in its current state."         |
-| Submit with required details missing         | 409 `LISTING_INCOMPLETE`         | The checklist items still unticked                               |
-| City changed after publication               | 409 `CITY_IMMUTABLE`             | "A published listing's city cannot be changed."                  |
-| Reject without a valid reason                | 400 `VALIDATION_FAILED`          | Inline error on the reason box                                   |
-| Publish or reject a listing not in review    | 409 `INVALID_STATUS_TRANSITION`  | "This listing was already reviewed" (also on a lost race)        |
-| Publishing a batch starting in the past      | 409 `BATCH_START_DATE_PAST`      | "A batch starting in the past cannot be published."              |
-| Publishing a batch on an unpublished listing | 409 `BATCH_PARENT_NOT_PUBLISHED` | "Your listing must be published before you can publish a batch." |
-| seatsAvailable outside 0..seatsTotal         | 409 `SEATS_OUT_OF_RANGE`         | "Seats available must be between zero and the total seats."      |
-| Non-admin attempting to publish a listing    | 403 `FORBIDDEN`                  | Not reachable from the partner UI                                |
-| Renaming a published slug                    | 409 `SLUG_IMMUTABLE`             | "A published listing address cannot be changed."                 |
+| Condition                                           | API response                     | What the partner sees                                            |
+| --------------------------------------------------- | -------------------------------- | ---------------------------------------------------------------- |
+| Listing owned by another organisation               | 403 `FORBIDDEN`                  | "You do not have permission to change this listing."             |
+| Submitting a non-DRAFT listing                      | 409 `INVALID_STATUS_TRANSITION`  | "This listing cannot be submitted in its current state."         |
+| Submit with required details missing                | 409 `LISTING_INCOMPLETE`         | The checklist items still unticked                               |
+| City changed after publication                      | 409 `CITY_IMMUTABLE`             | "A published listing's city cannot be changed."                  |
+| Reject without a valid reason                       | 400 `VALIDATION_FAILED`          | Inline error on the reason box                                   |
+| Publish or reject a listing not in review           | 409 `INVALID_STATUS_TRANSITION`  | "This listing was already reviewed" (also on a lost race)        |
+| Publishing a batch starting in the past             | 409 `BATCH_START_DATE_PAST`      | "A batch starting in the past cannot be published."              |
+| Publishing a batch on an unpublished listing        | 409 `BATCH_PARENT_NOT_PUBLISHED` | "Your listing must be published before you can publish a batch." |
+| seatsAvailable outside 0..seatsTotal                | 409 `SEATS_OUT_OF_RANGE`         | "Seats available must be between zero and the total seats."      |
+| Non-admin attempting to publish a listing           | 403 `FORBIDDEN`                  | Not reachable from the partner UI                                |
+| Renaming a published slug                           | 409 `SLUG_IMMUTABLE`             | "A published listing address cannot be changed."                 |
+| Clerk does not know the session's organisation      | 403 `FORBIDDEN`                  | "You do not have permission to change this listing."             |
+| Clerk unreachable during first-request provisioning | 503 `UPSTREAM_UNAVAILABLE`       | Generic retry message (the cause is logged)                      |
+| Saving verification details with nothing filled in  | (no request)                     | "Nothing to save — fill in at least one field."                  |
 
 ## Known gap: moderation is not instant on the public site
 
