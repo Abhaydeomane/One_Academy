@@ -1,12 +1,14 @@
 import { fetchClerkOrganization, type ClerkOrganization } from '../../lib/clerk.js'
-import { ConflictError, UpstreamUnavailableError } from '../../lib/errors.js'
+import { ConflictError, ForbiddenError, UpstreamUnavailableError } from '../../lib/errors.js'
+import { logger } from '../../lib/logger.js'
 import { slugify } from '../../lib/slug.js'
 import * as repo from './accounts.repository.js'
 
 // Clerk owns identity and organisation membership. These rows are a local
 // mirror so authorization is a database join rather than an API call per
-// request. Nothing here ever writes globalRole: ADMIN is granted only by a
-// direct database write, never by an endpoint or a webhook.
+// request. Nothing here writes User.globalRole: admin rights come from the
+// Clerk session's metadata.globalRole (ADR 0006); User.globalRole is not used
+// for authorization.
 
 export async function syncUser(input: {
   clerkUserId: string
@@ -92,12 +94,14 @@ export async function resolveLocalOrgId(clerkOrgId: string): Promise<string> {
 }
 
 async function provisionFromClerk(clerkOrgId: string): Promise<string> {
-  let remote: ClerkOrganization
+  let remote: ClerkOrganization | null
   try {
     remote = await fetchClerkOrganization(clerkOrgId)
-  } catch {
+  } catch (error) {
+    logger.warn({ err: error, clerkOrgId }, 'Clerk organisation lookup failed')
     throw new UpstreamUnavailableError('Could not reach Clerk to set up the organisation')
   }
+  if (!remote) throw new ForbiddenError('Organisation not found in Clerk')
   const slug = slugify(remote.slug ?? remote.name) || `org-${slugify(clerkOrgId)}`
   return createOrgOnce({ clerkOrgId, name: remote.name, slug })
 }

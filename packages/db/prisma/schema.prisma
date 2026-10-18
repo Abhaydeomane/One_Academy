@@ -93,7 +93,8 @@ model Organization {
   memberships Membership[]
 }
 
-/// Local mirror of a Clerk user. globalRole is never set by any endpoint.
+/// Local mirror of a Clerk user. Admin rights come from the Clerk session's
+/// metadata.globalRole (ADR 0006); globalRole here is not used for authorization.
 model User {
   id          String     @id @default(cuid(2))
   clerkUserId String?    @unique

@@ -128,6 +128,15 @@ describe('on-demand provisioning', () => {
     )
   })
 
+  it('is FORBIDDEN and writes nothing when Clerk does not know the organisation', async () => {
+    fetchOrg.mockResolvedValue(null)
+    await expect(resolveLocalOrgId('co_missing')).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      status: 403,
+    })
+    expect(await prisma.organization.count()).toBe(0)
+  })
+
   it('is UPSTREAM_UNAVAILABLE and writes nothing when Clerk fails', async () => {
     fetchOrg.mockRejectedValue(new Error('network down'))
     await expect(resolveLocalOrgId('co_new')).rejects.toMatchObject({

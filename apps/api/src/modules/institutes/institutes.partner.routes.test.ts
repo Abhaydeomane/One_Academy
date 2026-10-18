@@ -382,6 +382,45 @@ describe('PATCH /api/v1/partner/listings/:listingId — verification details', (
     expect(body.slug).toBe('draft-academy-mumbai')
   })
 
+  it('regenerates the slug when a draft is renamed', async () => {
+    const res = await testApp()
+      .patch(`/api/v1/partner/listings/${seed.draftListingId}`)
+      .set('x-test-auth', auth('co_alpha'))
+      .send({ name: 'Alpha Prime' })
+    expect(res.status).toBe(200)
+    expect(partnerListingDetail.parse(res.body).slug).toBe('alpha-prime-pune')
+  })
+
+  it('keeps the slug when a published listing is renamed (BR-002)', async () => {
+    const res = await testApp()
+      .patch(`/api/v1/partner/listings/${seed.publishedListingId}`)
+      .set('x-test-auth', auth('co_alpha'))
+      .send({ name: 'Alpha Prime' })
+    expect(res.status).toBe(200)
+    const body = partnerListingDetail.parse(res.body)
+    expect(body.name).toBe('Alpha Prime')
+    expect(body.slug).toBe(seed.publishedSlug)
+  })
+
+  it('leaves amenity tags untouched when exams are replaced', async () => {
+    const amenity = await prisma.tag.create({
+      data: { slug: 'wifi', label: 'Wi-Fi', kind: 'AMENITY' },
+    })
+    await prisma.listingTag.create({
+      data: { listingId: seed.draftListingId, tagId: amenity.id },
+    })
+    const res = await testApp()
+      .patch(`/api/v1/partner/listings/${seed.draftListingId}`)
+      .set('x-test-auth', auth('co_alpha'))
+      .send({ examSlugs: ['jee'] })
+    expect(res.status).toBe(200)
+    const tags = await prisma.listingTag.findMany({
+      where: { listingId: seed.draftListingId },
+      select: { tag: { select: { slug: true } } },
+    })
+    expect(tags.map((entry) => entry.tag.slug).sort()).toEqual(['jee', 'wifi'])
+  })
+
   it('409s CITY_IMMUTABLE on a published listing', async () => {
     await prisma.city.create({ data: { slug: 'mumbai', name: 'Mumbai', state: 'Maharashtra' } })
     const res = await testApp()

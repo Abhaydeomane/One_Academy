@@ -236,7 +236,7 @@ export async function updateForOrg(
   if (!current) throw new NotFoundError('Listing not found')
 
   let cityId: string | undefined
-  let slug: string | undefined
+  let citySlug = current.city.slug
   if (body.citySlug !== undefined && body.citySlug !== current.city.slug) {
     if (current.status !== 'DRAFT') {
       throw new ConflictError(
@@ -249,11 +249,17 @@ export async function updateForOrg(
       throw new BadRequestError('Unknown city', { fieldErrors: { citySlug: ['Unknown city'] } })
     }
     cityId = city.id
-    // The slug embeds the city. City changes are DRAFT-only, and a draft has
-    // never been public, so the slug is regenerated rather than redirected
-    // (BR-002 freezes slugs from publication). It is written in the same
-    // transaction as cityId, after all validation.
-    slug = await availableListingSlug(slugify(`${body.name ?? current.name} ${city.slug}`))
+    citySlug = city.slug
+  }
+
+  // The slug embeds the name and the city. While a listing is a DRAFT it has
+  // never been public, so a change to either regenerates the slug rather than
+  // redirecting (BR-002 freezes slugs from publication). It is written in the
+  // same transaction as the other fields, after all validation.
+  const renamed = body.name !== undefined && body.name !== current.name
+  let slug: string | undefined
+  if ((cityId || renamed) && current.status === 'DRAFT') {
+    slug = await availableListingSlug(slugify(`${body.name ?? current.name} ${citySlug}`))
   }
 
   let examTagIds: string[] | undefined

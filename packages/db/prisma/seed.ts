@@ -35,6 +35,8 @@ async function main() {
     update: { verifiedAt: new Date('2026-01-01T00:00:00Z') },
   })
 
+  // Local-only fixture row. Admin rights come from the Clerk session's
+  // metadata.globalRole (ADR 0006); User.globalRole is not used for authorization.
   await prisma.user.upsert({
     where: { id: 'user-seed-admin' },
     create: {

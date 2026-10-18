@@ -208,6 +208,7 @@ describe('contactPhone never reaches a public response', () => {
     const res = await testApp().get(path())
     expect(res.status).toBe(200)
     const text = JSON.stringify(res.body)
+    expect(text).toContain(seed.publishedSlug)
     expect(text).not.toContain(PHONE)
     expect(text).not.toContain('9123456780')
     expect(text).not.toContain('contactPhone')
