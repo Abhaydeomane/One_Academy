@@ -15,7 +15,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "prisma generate && tsc -p tsconfig.build.json && cp -R generated dist/generated",
+    "build": "prisma generate && tsc -p tsconfig.build.json && rm -rf dist/generated && cp -R generated dist/generated",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "echo no-op",
