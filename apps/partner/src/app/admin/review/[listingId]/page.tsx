@@ -30,6 +30,14 @@ export default async function ReviewListingPage({
   return (
     <section className="space-y-5">
       <h1 className="text-xl font-bold leading-tight sm:text-2xl">{listing.name}</h1>
+      <p className="text-sm text-gray-600">
+        Status: {listing.status.replaceAll('_', ' ').toLowerCase()}
+      </p>
+      {listing.rejectionReason ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+          Previously rejected: {listing.rejectionReason}
+        </p>
+      ) : null}
 
       <dl className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white px-4">
         <Row label="Organisation">
@@ -73,7 +81,13 @@ export default async function ReviewListingPage({
         {listing.about ? <Row label="About">{listing.about}</Row> : null}
       </dl>
 
-      <ReviewActions listingId={listing.id} approveLabel={approveLabel} />
+      {listing.status === 'PENDING_REVIEW' ? (
+        <ReviewActions listingId={listing.id} approveLabel={approveLabel} />
+      ) : (
+        <p className="rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-600">
+          This listing is not waiting for review.
+        </p>
+      )}
     </section>
   )
 }

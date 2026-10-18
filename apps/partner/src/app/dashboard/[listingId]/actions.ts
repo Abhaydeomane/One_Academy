@@ -159,6 +159,10 @@ export async function updateVerificationAction(
     ...(citySlug ? { citySlug } : {}),
   }
 
+  if (Object.keys(raw).length === 0) {
+    return { status: 'error', message: 'Nothing to save — fill in at least one field.', values }
+  }
+
   const parsed = updateListingBody.safeParse(raw)
   if (!parsed.success) {
     return {

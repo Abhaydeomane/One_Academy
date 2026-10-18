@@ -46,6 +46,12 @@ export default async function ReviewQueuePage({
         </p>
       ) : null}
 
+      {queue.total > queue.items.length ? (
+        <p className="text-sm text-gray-600">
+          Showing {queue.items.length} of {queue.total}, oldest first.
+        </p>
+      ) : null}
+
       {queue.items.length === 0 ? (
         <p className="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-600">
           Nothing waiting for review.
