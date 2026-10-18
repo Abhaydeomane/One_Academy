@@ -16,6 +16,9 @@ export const ERROR_CODES = [
   'BATCH_PARENT_NOT_PUBLISHED',
   'SEATS_OUT_OF_RANGE',
   'INVALID_STATUS_TRANSITION',
+  'LISTING_INCOMPLETE',
+  'CITY_IMMUTABLE',
+  'UPSTREAM_UNAVAILABLE',
 ] as const
 
 export type ErrorCode = (typeof ERROR_CODES)[number]
