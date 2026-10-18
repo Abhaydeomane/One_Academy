@@ -70,6 +70,25 @@ pnpm dev
 
 API on `:4000`, web on `:3000`, partner on `:3001`.
 
+Run each app either with `dev` (reloads on edit) or with `build` then `start` (the
+production build) — not both on the same port. `start` serves the build it was launched
+with, so after a code change rebuild and restart it; rebuilding underneath a running
+`next start` makes its CSS answer `500`.
+
+## Testing on a phone
+
+Most traffic is phones, and desktop devtools' mobile view is still `localhost`, so it
+misses anything origin-specific. To test on a real device on the same Wi-Fi:
+
+```bash
+ipconfig getifaddr en0                 # the laptop's LAN IP
+```
+
+Open `http://<that-ip>:3000` on the phone. `apps/web/next.config.ts` allows the machine's
+current LAN addresses as dev origins; they are read at startup, so **restart `pnpm dev`
+after changing networks**. A page that renders but does nothing when tapped means its
+JavaScript was refused — see BUG-004.
+
 ## Verify
 
 ```bash
@@ -114,3 +133,7 @@ psql "postgresql://one_academy:local_dev_only@localhost:5432/one_academy_dev" \
 | `PrismaConfigEnvError: Cannot resolve DATABASE_URL` | Prisma 7 does not load `.env`; it is loaded explicitly in `prisma.config.ts`. |
 | Integration tests fail on a missing column          | The test database is behind. Re-run `migrate deploy` against it.              |
 | `Clerk: <SignedIn> is not available`                | Clerk Core 3 removed those components; read the session with `auth()`.        |
+| API `FATAL ... EADDRINUSE`                          | The port is taken, usually by a `dev` server. `lsof -nP -iTCP:4000`.          |
+| `Cannot find module '@prisma/client-runtime-utils'` | `@one/db` must declare it; pnpm hides transitive deps. See BUG-005.           |
+| Page works on laptop, not interactive on phone      | Dev server refused the phone's origin. Restart `pnpm dev`. See BUG-004.       |
+| A `brand-*` class has no effect                     | That step is not defined in `packages/ui/src/styles.css`. See BUG-003.        |

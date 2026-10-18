@@ -1,7 +1,11 @@
 @import 'tailwindcss';
 
 /* Tailwind 4 is CSS-first: these tokens are the design system, and there is no
-   tailwind.config.js anywhere in this repo. */
+   tailwind.config.js anywhere in this repo.
+
+   The brand scale is deliberately partial. A class naming an undefined step
+   (e.g. bg-brand-300) compiles to nothing, silently — define the token here
+   before using it (BUG-003). */
 @theme {
   --color-brand-50: oklch(0.97 0.02 250);
   --color-brand-100: oklch(0.93 0.04 250);

@@ -19,6 +19,9 @@ Every dependency is pinned to an exact version in the `catalog:` block of
 **Prisma 7.10.0, not 8.** The npm `latest` dist-tag for `prisma` points at
 `8.0.0-rc.22` — a release candidate — while `@prisma/client` latest is `7.10.0`. An agent
 running `pnpm add prisma` installs an RC and desynchronises the CLI from the client.
+The pin covers every `@prisma/*` package in the catalog, including
+`@prisma/client-runtime-utils`, which `@one/db` declares directly because the generated
+client imports it and pnpm would otherwise hide it (BUG-005). Move them together.
 
 **TypeScript 6.0.3, not 7.** `typescript-eslint@8.71.1` declares
 `typescript: ">=4.8.4 <6.1.0"`. TypeScript 7, the native compiler, is stable and current,
