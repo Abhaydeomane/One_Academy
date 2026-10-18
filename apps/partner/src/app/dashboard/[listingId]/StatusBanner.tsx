@@ -7,19 +7,28 @@ import {
 import { ActionButton } from './ActionButton'
 import { submitListingAction } from './actions'
 
-const WEB_BASE_URL = process.env.WEB_BASE_URL ?? 'http://localhost:3000'
+// No localhost fallback in production: a missing variable must not link
+// published partners to localhost, so the link is omitted instead.
+const WEB_BASE_URL =
+  process.env.WEB_BASE_URL ??
+  (process.env.NODE_ENV !== 'production' ? 'http://localhost:3000' : undefined)
 
 export function StatusBanner({ listing }: { listing: PartnerListingDetail }) {
   if (listing.status === 'PUBLISHED') {
     return (
       <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-gray-700">
-        Live on One Academy.{' '}
-        <a
-          href={`${WEB_BASE_URL}/institutes/${listing.slug}`}
-          className="tap-target inline-flex items-center font-medium text-brand-700 underline"
-        >
-          View your public page
-        </a>
+        Live on One Academy.
+        {WEB_BASE_URL ? (
+          <>
+            {' '}
+            <a
+              href={`${WEB_BASE_URL}/institutes/${listing.slug}`}
+              className="tap-target inline-flex items-center font-medium text-brand-700 underline"
+            >
+              View your public page
+            </a>
+          </>
+        ) : null}
       </div>
     )
   }

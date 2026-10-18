@@ -42,7 +42,7 @@ export function ActionButton({
 
       {state.message ? (
         <p
-          role={state.status === 'error' ? 'alert' : undefined}
+          role={state.status === 'error' ? 'alert' : 'status'}
           className={state.status === 'error' ? 'text-sm text-red-600' : 'text-sm text-green-700'}
         >
           {state.message}

@@ -16,6 +16,8 @@ export type ActionState = {
   status: 'idle' | 'success' | 'error'
   message?: string
   fieldErrors?: Record<string, string[]>
+  /** Raw submitted values echoed on error so the form can keep the user's input. */
+  values?: Record<string, string | string[]>
 }
 
 export async function createBatchAction(
@@ -49,7 +51,7 @@ export async function createBatchAction(
   if (!parsed.success) {
     return {
       status: 'error',
-      message: 'Please correct the highlighted fields.',
+      message: 'Please fix the fields marked below.',
       fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
     }
   }
@@ -119,23 +121,51 @@ export async function updateVerificationAction(
     return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined
   }
   const examSlugs = formData.getAll('examSlugs').map(String)
+  const address = text('address')
   const phone = text('contactPhone')
+  const citySlug = text('citySlug')
+
+  // React resets the form after every action, so errors echo what was typed.
+  const values: Record<string, string | string[]> = {
+    address: String(formData.get('address') ?? ''),
+    contactPhone: String(formData.get('contactPhone') ?? ''),
+    examSlugs,
+    ...(citySlug ? { citySlug } : {}),
+  }
+
+  // Clearing a required detail is not supported (BR-012 needs them and the API
+  // has no null path), so say so instead of reporting a silent no-op. A field
+  // that was never set may stay blank: partners fill the form progressively.
+  const fieldErrors: Record<string, string[]> = {}
+  if (!address && formData.get('hadAddress') === '1') {
+    fieldErrors.address = ["Address can't be empty."]
+  }
+  if (!phone && formData.get('hadContactPhone') === '1') {
+    fieldErrors.contactPhone = ["Contact phone can't be empty."]
+  }
+  if (examSlugs.length === 0 && formData.get('hadExams') === '1') {
+    fieldErrors.examSlugs = ['Pick at least one exam.']
+  }
+  if (Object.keys(fieldErrors).length > 0) {
+    return { status: 'error', message: 'Please fix the fields marked below.', fieldErrors, values }
+  }
 
   const raw = {
-    ...(text('address') ? { address: text('address') } : {}),
+    ...(address ? { address } : {}),
     // Review Focus 1: "+91 98765 43210" is how people type it.
     ...(phone ? { contactPhone: normalizePhone(phone) } : {}),
     ...(examSlugs.length > 0 ? { examSlugs } : {}),
     // A disabled select is not submitted, so city is only sent while editable.
-    ...(text('citySlug') ? { citySlug: text('citySlug') } : {}),
+    ...(citySlug ? { citySlug } : {}),
   }
 
   const parsed = updateListingBody.safeParse(raw)
   if (!parsed.success) {
     return {
       status: 'error',
-      message: 'Please correct the highlighted fields.',
+      message: 'Please fix the fields marked below.',
       fieldErrors: z.flattenError(parsed.error).fieldErrors as Record<string, string[]>,
+      values,
     }
   }
 
@@ -149,6 +179,6 @@ export async function updateVerificationAction(
     revalidatePath(`/dashboard/${listingId}`)
     return { status: 'success', message: 'Details saved.' }
   } catch (error) {
-    return { status: 'error', message: partnerErrorMessage(error) }
+    return { status: 'error', message: partnerErrorMessage(error), values }
   }
 }

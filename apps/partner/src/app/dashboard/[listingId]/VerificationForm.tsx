@@ -6,7 +6,7 @@ import { updateVerificationAction, type ActionState } from './actions'
 
 const INITIAL: ActionState = { status: 'idle' }
 const FIELD =
-  'w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-100'
+  'w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500 disabled:bg-gray-100'
 
 function FieldError({ errors }: { errors?: string[] }) {
   if (!errors?.[0]) return null
@@ -22,19 +22,29 @@ export function VerificationForm({
 }) {
   const [state, formAction, pending] = useActionState(updateVerificationAction, INITIAL)
   const cityEditable = listing.status === 'DRAFT'
+  const echoed = state.status === 'error' ? state.values : undefined
+  const str = (key: string, fallback: string) => {
+    const value = echoed?.[key]
+    return typeof value === 'string' ? value : fallback
+  }
+  const checkedExams = Array.isArray(echoed?.examSlugs) ? echoed.examSlugs : listing.exams
+  const city = str('citySlug', listing.citySlug)
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form
+      // Remount on an error result so inputs pick up the echoed values.
+      key={echoed ? JSON.stringify(echoed) + state.message : 'form'}
+      action={formAction}
+      className="space-y-4"
+    >
       <input type="hidden" name="listingId" value={listing.id} />
+      <input type="hidden" name="hadAddress" value={listing.address ? '1' : '0'} />
+      <input type="hidden" name="hadContactPhone" value={listing.contactPhone ? '1' : '0'} />
+      <input type="hidden" name="hadExams" value={listing.exams.length > 0 ? '1' : '0'} />
 
       <label className="block space-y-1.5">
         <span className="text-sm font-medium">City</span>
-        <select
-          name="citySlug"
-          defaultValue={listing.citySlug}
-          disabled={!cityEditable}
-          className={FIELD}
-        >
+        <select name="citySlug" defaultValue={city} disabled={!cityEditable} className={FIELD}>
           {reference.cities.map((city) => (
             <option key={city.slug} value={city.slug}>
               {city.name}, {city.state}
@@ -55,7 +65,7 @@ export function VerificationForm({
           rows={3}
           maxLength={300}
           autoComplete="street-address"
-          defaultValue={listing.address ?? ''}
+          defaultValue={str('address', listing.address ?? '')}
           className={FIELD}
           placeholder="Building, street, area, city, PIN code"
         />
@@ -69,7 +79,7 @@ export function VerificationForm({
           type="tel"
           inputMode="tel"
           autoComplete="tel-national"
-          defaultValue={listing.contactPhone ?? ''}
+          defaultValue={str('contactPhone', listing.contactPhone ?? '')}
           className={FIELD}
           placeholder="98765 43210"
         />
@@ -86,10 +96,10 @@ export function VerificationForm({
                 type="checkbox"
                 name="examSlugs"
                 value={exam.slug}
-                defaultChecked={listing.exams.includes(exam.slug)}
+                defaultChecked={checkedExams.includes(exam.slug)}
                 className="peer sr-only"
               />
-              <span className="inline-flex items-center rounded-full border border-gray-300 px-4 text-sm peer-checked:border-brand-500 peer-checked:bg-brand-50 peer-checked:text-brand-700 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-100">
+              <span className="inline-flex items-center rounded-full border border-gray-300 px-4 text-sm peer-checked:border-brand-500 peer-checked:bg-brand-50 peer-checked:text-brand-700 peer-focus-visible:ring-2 peer-focus-visible:ring-offset-1 peer-focus-visible:ring-brand-500">
                 {exam.label}
               </span>
             </label>
@@ -108,7 +118,7 @@ export function VerificationForm({
 
       {state.message ? (
         <p
-          role={state.status === 'error' ? 'alert' : undefined}
+          role={state.status === 'error' ? 'alert' : 'status'}
           className={state.status === 'error' ? 'text-sm text-red-600' : 'text-sm text-green-700'}
         >
           {state.message}
