@@ -25,7 +25,8 @@ Distinct from Membership role: Membership is per-organisation, globalRole is pla
 The `User.globalRole` column is not used for authorization.
 
 **Verified organisation** — one whose first listing an admin has published (BR-013);
-`Organization.verifiedAt` is set.
+`Organization.verifiedAt` is set. A `verifiedAt` with a null `verifiedByClerkUserId` means
+it was verified by hand before P2a (backfilled).
 
 **Enquiry** — a student's lead on a listing, optionally naming a batch. Becomes the
 admissions pipeline in P3.

@@ -70,4 +70,8 @@ partner's first request.
   mock, permitted because Clerk is external. The database is still never mocked.
 - Spam sign-ups cost the owner review time. The queue is the only throttle.
 - Admin rights come from Clerk session metadata (ADR 0006), not the database.
+- Edits made after submission (while PENDING_REVIEW) or after publication are not
+  re-reviewed in P2a. An approval can cover details changed after the admin opened the
+  review page, and a published listing can be renamed without review. Closing this is P2b
+  moderation work.
 - The webhook stays the normal path; on-demand provisioning only closes the race.

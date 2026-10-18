@@ -59,8 +59,9 @@ apps/partner/src/app/dashboard/[listingId]/page.tsx   StatusBanner checklist fro
 
 `updateForOrg` validates everything (city and exam slugs, and that city is unchanged on a
 published listing) before writing, then writes the fields in one transaction. Changing a
-DRAFT's city regenerates its slug inside that same transaction. The phone is normalised by
-the shared `phoneSchema`; `website` must be http or https, and `safeHttpUrl` guards every
+DRAFT's city or renaming a DRAFT regenerates its slug inside that same transaction
+(published slugs never change, BR-002). The phone is normalised by `normalizePhone` in the
+partner server action; the shared `phoneSchema` only validates exactly 10 digits. `website` must be http or https, and `safeHttpUrl` guards every
 place a stored website is rendered. On a failed save the form keeps what the partner typed;
 address, phone and exams cannot be cleared once set (the form returns a field error).
 Exam chips are checkbox inputs styled as chips. Submission is in `listing-lifecycle.md`.
