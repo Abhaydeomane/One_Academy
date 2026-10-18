@@ -109,3 +109,89 @@ test('partner creates a batch, admin publishes, and it appears publicly', async 
   await expect(page.getByRole('heading', { name: 'NEET 2028 Foundation' })).toBeVisible()
   await expect(page.getByText('₹88,000')).toBeVisible()
 })
+
+test('a self-registered institute is rejected once, then published and verified', async ({
+  request,
+  page,
+}) => {
+  // Stands in for the organization.created webhook; the e2e API has no Clerk.
+  const org = await prisma.organization.create({
+    data: { name: 'Gamma Group', slug: 'gamma-group', clerkOrgId: 'co_e2e_gamma' },
+  })
+  const headers = {
+    'x-test-auth': JSON.stringify({
+      userId: 'e2e-gamma',
+      orgId: 'co_e2e_gamma',
+      globalRole: 'USER',
+    }),
+    'content-type': 'application/json',
+  }
+  const adminHeaders = { 'x-test-auth': ADMIN, 'content-type': 'application/json' }
+  const name = `Gamma Classes ${Date.now()}`
+
+  const created = await request.post(`${API}/api/v1/partner/listings`, {
+    headers,
+    data: { name, citySlug: 'mumbai', status: 'PUBLISHED' },
+  })
+  expect(created.status()).toBe(201)
+  const listing = await created.json()
+  expect(listing.status).toBe('DRAFT')
+
+  const incomplete = await request.post(`${API}/api/v1/partner/listings/${listing.id}/submit`, {
+    headers,
+  })
+  expect(incomplete.status()).toBe(409)
+  expect((await incomplete.json()).error.details.missing).toEqual([
+    'address',
+    'contactPhone',
+    'exams',
+  ])
+
+  const filled = await request.patch(`${API}/api/v1/partner/listings/${listing.id}`, {
+    headers,
+    data: {
+      address: '7 Hill Road, Bandra West, Mumbai 400050',
+      contactPhone: '9988776655',
+      examSlugs: ['neet'],
+    },
+  })
+  expect(filled.status()).toBe(200)
+
+  expect(
+    (
+      await request.post(`${API}/api/v1/partner/listings/${listing.id}/submit`, { headers })
+    ).status(),
+  ).toBe(200)
+
+  const rejected = await request.post(`${API}/api/v1/admin/listings/${listing.id}/reject`, {
+    headers: adminHeaders,
+    data: { reason: 'The phone number did not answer.' },
+  })
+  expect(rejected.status()).toBe(200)
+
+  const asPartner = await request.get(`${API}/api/v1/partner/listings/${listing.id}`, { headers })
+  expect(await asPartner.json()).toMatchObject({
+    status: 'DRAFT',
+    rejectionReason: 'The phone number did not answer.',
+  })
+
+  expect(
+    (
+      await request.post(`${API}/api/v1/partner/listings/${listing.id}/submit`, { headers })
+    ).status(),
+  ).toBe(200)
+
+  const published = await request.post(`${API}/api/v1/admin/listings/${listing.id}/publish`, {
+    headers: adminHeaders,
+  })
+  expect(published.status()).toBe(200)
+
+  const verified = await prisma.organization.findUniqueOrThrow({ where: { id: org.id } })
+  expect(verified.verifiedAt).not.toBeNull()
+  expect(verified.verifiedByClerkUserId).toBe('e2e-admin')
+
+  await page.goto(`/institutes/${listing.slug}`)
+  await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
+  await expect(page.getByText('7 Hill Road, Bandra West, Mumbai 400050')).toBeVisible()
+  expect(await page.content()).not.toContain('9988776655')
+})
