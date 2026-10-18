@@ -290,6 +290,12 @@ describe('concurrent and repeated decisions', () => {
     }
   })
 
+  it('409s publishing a DRAFT listing', async () => {
+    const res = await testApp().post(`${base()}/publish`).set('x-test-auth', asAdmin)
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('INVALID_STATUS_TRANSITION')
+  })
+
   it('clears a previous rejection reason on publish', async () => {
     await makePending(seed.draftListingId)
     await prisma.listing.update({

@@ -133,7 +133,7 @@ export async function markRejected(id: string, reason: string): Promise<number> 
 /// organisation write lives here rather than behind accounts.service because
 /// it must share the transaction; the verifiedAt: null guard means an existing
 /// verification is never overwritten. The listing write is conditional on the
-/// statuses publish accepts; returns false (and verifies nothing) if another
+/// PENDING_REVIEW status; returns false (and verifies nothing) if another
 /// admin decision got there first.
 export async function publishAndVerify(
   id: string,
@@ -143,7 +143,7 @@ export async function publishAndVerify(
 ): Promise<boolean> {
   return prisma.$transaction(async (tx) => {
     const listing = await tx.listing.updateMany({
-      where: { id, status: { in: ['PENDING_REVIEW', 'DRAFT'] } },
+      where: { id, status: 'PENDING_REVIEW' },
       data: { status: 'PUBLISHED', publishedAt: at, rejectionReason: null },
     })
     if (listing.count === 0) return false

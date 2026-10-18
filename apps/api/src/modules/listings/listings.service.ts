@@ -63,10 +63,10 @@ export async function submitForReview(listingId: string) {
 export async function publish(listingId: string, verifierClerkUserId: string) {
   const listing = await repo.findById(listingId)
   if (!listing) throw new NotFoundError('Listing not found')
-  if (listing.status !== 'PENDING_REVIEW' && listing.status !== 'DRAFT') {
+  if (listing.status !== 'PENDING_REVIEW') {
     throw new ConflictError(
       'INVALID_STATUS_TRANSITION',
-      `Cannot publish a listing in status ${listing.status}`,
+      `Only a listing waiting for review can be published; this listing is ${listing.status}`,
     )
   }
   const published = await repo.publishAndVerify(
