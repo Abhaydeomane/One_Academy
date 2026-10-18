@@ -1,4 +1,4 @@
-import { adminListingDetail } from '@one/shared'
+import { adminListingDetail, safeHttpUrl } from '@one/shared'
 import { partnerApiGet } from '@/lib/api'
 import { ReviewActions } from './ReviewActions'
 
@@ -54,9 +54,9 @@ export default async function ReviewListingPage({
           )}
         </Row>
         <Row label="Website">
-          {listing.website ? (
+          {safeHttpUrl(listing.website) ? (
             <a
-              href={listing.website}
+              href={safeHttpUrl(listing.website) ?? undefined}
               target="_blank"
               rel="noopener noreferrer"
               className={`tap-target inline-flex items-center break-all text-brand-700 underline ${LINK_FOCUS}`}
@@ -64,7 +64,7 @@ export default async function ReviewListingPage({
               {listing.website}
             </a>
           ) : (
-            '—'
+            (listing.website ?? '—')
           )}
         </Row>
         <Row label="Exams">{listing.exams.map((exam) => exam.toUpperCase()).join(', ') || '—'}</Row>

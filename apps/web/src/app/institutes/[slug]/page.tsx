@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Badge } from '@one/ui'
-import { batchListResponse, buildLandingPath, instituteDetail } from '@one/shared'
+import { batchListResponse, buildLandingPath, instituteDetail, safeHttpUrl } from '@one/shared'
 import { apiGet, apiGetOptional } from '@/lib/api'
 import { formatDateRange, formatFee, formatSeats } from '@/lib/format'
 import { EnquiryForm } from './EnquiryForm'
@@ -44,7 +44,7 @@ export default async function InstituteDetailPage({ params }: { params: Params }
     '@type': 'EducationalOrganization',
     name: institute.name,
     ...(institute.shortDescription ? { description: institute.shortDescription } : {}),
-    ...(institute.website ? { url: institute.website } : {}),
+    ...(safeHttpUrl(institute.website) ? { url: safeHttpUrl(institute.website) } : {}),
     ...(institute.establishedYear ? { foundingDate: String(institute.establishedYear) } : {}),
     address: {
       '@type': 'PostalAddress',

@@ -29,14 +29,19 @@ export default async function ReviewQueuePage({
     '/api/v1/admin/listings?status=PENDING_REVIEW&limit=50',
     adminListingQueueResponse,
   )
-  const notice = done ? NOTICES[done] : undefined
+  const notice = done && Object.hasOwn(NOTICES, done) ? NOTICES[done] : undefined
 
   return (
     <section className="space-y-4">
       <h1 className="text-xl font-bold sm:text-2xl">Review queue</h1>
 
       {notice ? (
-        <p role="status" className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm">
+        <p
+          role="status"
+          className={`rounded-lg border p-3 text-sm ${
+            done === 'already' ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50'
+          }`}
+        >
           {notice}
         </p>
       ) : null}

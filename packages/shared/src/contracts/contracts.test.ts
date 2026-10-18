@@ -202,6 +202,12 @@ describe('updateListingBody', () => {
   it('rejects a malformed website URL', () => {
     expect(updateListingBody.safeParse({ website: 'not-a-url' }).success).toBe(false)
   })
+
+  it('accepts only http(s) websites', () => {
+    expect(updateListingBody.safeParse({ website: 'https://example.com' }).success).toBe(true)
+    expect(updateListingBody.safeParse({ website: 'javascript:alert(1)' }).success).toBe(false)
+    expect(updateListingBody.safeParse({ website: 'data:text/html,x' }).success).toBe(false)
+  })
 })
 
 describe('compareQuery', () => {

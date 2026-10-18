@@ -57,7 +57,7 @@ export const updateListingBody = z
     shortDescription: z.string().max(500).optional(),
     locality: z.string().max(200).optional(),
     about: z.string().max(5000).optional(),
-    website: z.url().optional(),
+    website: z.url({ protocol: /^https?$/ }).optional(),
     establishedYear: z.number().int().min(1900).max(2100).optional(),
     facultyCount: z.number().int().min(0).max(10000).optional(),
     modes: z.array(modeSchema).min(1).optional(),
