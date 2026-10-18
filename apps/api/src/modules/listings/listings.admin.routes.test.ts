@@ -256,3 +256,73 @@ describe('POST /api/v1/admin/listings/:listingId/reject (BR-014)', () => {
     expect(res.status).toBe(403)
   })
 })
+
+describe('concurrent and repeated decisions', () => {
+  const base = () => `/api/v1/admin/listings/${seed.draftListingId}`
+  const reason = { reason: 'The phone number did not answer.' }
+
+  it('409s a reject after publish and leaves the listing PUBLISHED', async () => {
+    await makePending(seed.draftListingId)
+    await testApp().post(`${base()}/publish`).set('x-test-auth', asAdmin)
+    const res = await testApp().post(`${base()}/reject`).set('x-test-auth', asAdmin).send(reason)
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('INVALID_STATUS_TRANSITION')
+    const row = await prisma.listing.findUniqueOrThrow({ where: { id: seed.draftListingId } })
+    expect(row.status).toBe('PUBLISHED')
+  })
+
+  it('lets exactly one of a simultaneous publish and reject win', async () => {
+    await makePending(seed.draftListingId)
+    const [pub, rej] = await Promise.all([
+      testApp().post(`${base()}/publish`).set('x-test-auth', asAdmin),
+      testApp().post(`${base()}/reject`).set('x-test-auth', asAdmin2).send(reason),
+    ])
+    expect([pub.status, rej.status].sort()).toEqual([200, 409])
+
+    const row = await prisma.listing.findUniqueOrThrow({ where: { id: seed.draftListingId } })
+    const org = await prisma.organization.findUniqueOrThrow({ where: { id: seed.orgId } })
+    if (row.status === 'PUBLISHED') {
+      expect(row.rejectionReason).toBeNull()
+      expect(org.verifiedAt).not.toBeNull()
+    } else {
+      expect(row.status).toBe('DRAFT')
+      expect(org.verifiedAt).toBeNull()
+    }
+  })
+
+  it('clears a previous rejection reason on publish', async () => {
+    await makePending(seed.draftListingId)
+    await prisma.listing.update({
+      where: { id: seed.draftListingId },
+      data: { rejectionReason: 'An older reason for rejection' },
+    })
+    await testApp().post(`${base()}/publish`).set('x-test-auth', asAdmin)
+    const row = await prisma.listing.findUniqueOrThrow({ where: { id: seed.draftListingId } })
+    expect(row.rejectionReason).toBeNull()
+  })
+})
+
+describe('queue ordering', () => {
+  it('lists the oldest submission first', async () => {
+    const day = 24 * 60 * 60 * 1000
+    const source = await prisma.listing.findUniqueOrThrow({ where: { id: seed.draftListingId } })
+    const newer = await prisma.listing.create({
+      data: {
+        vertical: 'INSTITUTE',
+        organizationId: source.organizationId,
+        cityId: source.cityId,
+        name: 'Newer Institute',
+        slug: 'newer-institute',
+        status: 'PENDING_REVIEW',
+        submittedAt: new Date(),
+      },
+    })
+    await prisma.listing.update({
+      where: { id: seed.draftListingId },
+      data: { status: 'PENDING_REVIEW', submittedAt: new Date(Date.now() - 2 * day) },
+    })
+    const res = await testApp().get('/api/v1/admin/listings').set('x-test-auth', asAdmin)
+    const items = adminListingQueueResponse.parse(res.body).items
+    expect(items.map((i) => i.id)).toEqual([seed.draftListingId, newer.id])
+  })
+})

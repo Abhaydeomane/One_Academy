@@ -37,17 +37,6 @@ export async function createRedirect(listingId: string, oldSlug: string): Promis
   await prisma.listingRedirect.create({ data: { listingId, oldSlug } })
 }
 
-export async function updateStatus(
-  id: string,
-  status: ListingStatus,
-  publishedAt?: Date,
-): Promise<void> {
-  await prisma.listing.update({
-    where: { id },
-    data: { status, ...(publishedAt ? { publishedAt } : {}) },
-  })
-}
-
 type Mode = 'ONLINE' | 'OFFLINE' | 'HYBRID'
 
 export type ModerationRow = {
@@ -130,31 +119,38 @@ export async function findModerationDetail(id: string): Promise<ModerationDetail
   return prisma.listing.findUnique({ where: { id }, select: MODERATION_DETAIL_SELECT })
 }
 
-export async function markRejected(id: string, reason: string): Promise<void> {
-  await prisma.listing.update({
-    where: { id },
+/// Conditional on PENDING_REVIEW so two concurrent admin decisions cannot both
+/// win. Returns the number of rows changed (0 means someone else decided first).
+export async function markRejected(id: string, reason: string): Promise<number> {
+  const result = await prisma.listing.updateMany({
+    where: { id, status: 'PENDING_REVIEW' },
     data: { status: 'DRAFT', rejectionReason: reason },
   })
+  return result.count
 }
 
 /// BR-013 needs the listing and its organisation to change together. The
 /// organisation write lives here rather than behind accounts.service because
 /// it must share the transaction; the verifiedAt: null guard means an existing
-/// verification is never overwritten.
+/// verification is never overwritten. The listing write is conditional on the
+/// statuses publish accepts; returns false (and verifies nothing) if another
+/// admin decision got there first.
 export async function publishAndVerify(
   id: string,
   organizationId: string,
   at: Date,
   verifierClerkUserId: string,
-): Promise<void> {
-  await prisma.$transaction([
-    prisma.listing.update({
-      where: { id },
+): Promise<boolean> {
+  return prisma.$transaction(async (tx) => {
+    const listing = await tx.listing.updateMany({
+      where: { id, status: { in: ['PENDING_REVIEW', 'DRAFT'] } },
       data: { status: 'PUBLISHED', publishedAt: at, rejectionReason: null },
-    }),
-    prisma.organization.updateMany({
+    })
+    if (listing.count === 0) return false
+    await tx.organization.updateMany({
       where: { id: organizationId, verifiedAt: null },
       data: { verifiedAt: at, verifiedByClerkUserId: verifierClerkUserId },
-    }),
-  ])
+    })
+    return true
+  })
 }

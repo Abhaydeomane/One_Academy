@@ -69,7 +69,18 @@ export async function publish(listingId: string, verifierClerkUserId: string) {
       `Cannot publish a listing in status ${listing.status}`,
     )
   }
-  await repo.publishAndVerify(listingId, listing.organizationId, new Date(), verifierClerkUserId)
+  const published = await repo.publishAndVerify(
+    listingId,
+    listing.organizationId,
+    new Date(),
+    verifierClerkUserId,
+  )
+  if (!published) {
+    throw new ConflictError(
+      'INVALID_STATUS_TRANSITION',
+      'This listing was decided by another admin; reload and retry',
+    )
+  }
 }
 
 export async function isPublished(listingId: string) {
@@ -144,7 +155,12 @@ export async function rejectAsAdmin(
       `Only a listing waiting for review can be rejected; this listing is ${listing.status}`,
     )
   }
-  await repo.markRejected(listingId, reason)
+  if ((await repo.markRejected(listingId, reason)) === 0) {
+    throw new ConflictError(
+      'INVALID_STATUS_TRANSITION',
+      'This listing was decided by another admin; reload and retry',
+    )
+  }
   const row = await repo.findModerationRow(listingId)
   if (!row) throw new NotFoundError('Listing not found')
   return toAdminSummary(row)
