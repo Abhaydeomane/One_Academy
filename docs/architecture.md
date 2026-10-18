@@ -65,8 +65,11 @@ OpenAPI 3.1 and CI fails if the committed document is stale.
 Clerk owns identity and organisation membership. `User`, `Organization` and `Membership`
 are local mirrors, so authorization is a database join rather than an API call per request;
 a signature-verified webhook keeps them in sync. The API is the sole authority on who may
-do what — the partner app renders what the API permits. `User.globalRole = ADMIN` is
-granted only by a direct database write, never by an endpoint or a webhook. See ADR 0006.
+do what — the partner app renders what the API permits. Admin rights come from the Clerk
+session token's `metadata.globalRole`, which is set in the user's Clerk public metadata and
+exposed through the session-token template (see the Clerk section of
+`runbooks/local-setup.md`). No endpoint or webhook grants it, and `User.globalRole` in the
+database is not used for authorization. See ADR 0006.
 
 ## Moderation
 

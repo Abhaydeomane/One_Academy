@@ -137,7 +137,7 @@ Linking a seeded organisation to Clerk remains a manual database statement, as
 
 Clerk creates the organisation and the `organization.created` webhook mirrors it
 asynchronously. A partner who creates an organisation and immediately creates a listing
-can reach the API first, which today is a 403 "not onboarded".
+can reach the API first, which before P2a was a 403 "not onboarded".
 
 **Change:** when an authenticated request carries a Clerk organisation id with no local
 row, `accounts.service` creates the row on the spot:
