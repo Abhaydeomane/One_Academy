@@ -1,11 +1,14 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { z } from 'zod'
 import {
   batchSummary,
   createBatchBody,
+  normalizePhone,
   partnerBatchSummary,
   partnerListingDetail,
+  updateListingBody,
 } from '@one/shared'
 import { partnerApiSend, partnerErrorMessage } from '@/lib/api'
 
@@ -101,6 +104,50 @@ export async function submitListingAction(
     )
     revalidatePath(`/dashboard/${listingId}`)
     return { status: 'success', message: 'Submitted for review.' }
+  } catch (error) {
+    return { status: 'error', message: partnerErrorMessage(error) }
+  }
+}
+
+export async function updateVerificationAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const listingId = String(formData.get('listingId') ?? '')
+  const text = (key: string) => {
+    const value = formData.get(key)
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined
+  }
+  const examSlugs = formData.getAll('examSlugs').map(String)
+  const phone = text('contactPhone')
+
+  const raw = {
+    ...(text('address') ? { address: text('address') } : {}),
+    // Review Focus 1: "+91 98765 43210" is how people type it.
+    ...(phone ? { contactPhone: normalizePhone(phone) } : {}),
+    ...(examSlugs.length > 0 ? { examSlugs } : {}),
+    // A disabled select is not submitted, so city is only sent while editable.
+    ...(text('citySlug') ? { citySlug: text('citySlug') } : {}),
+  }
+
+  const parsed = updateListingBody.safeParse(raw)
+  if (!parsed.success) {
+    return {
+      status: 'error',
+      message: 'Please correct the highlighted fields.',
+      fieldErrors: z.flattenError(parsed.error).fieldErrors as Record<string, string[]>,
+    }
+  }
+
+  try {
+    await partnerApiSend(
+      `/api/v1/partner/listings/${listingId}`,
+      'PATCH',
+      parsed.data,
+      partnerListingDetail,
+    )
+    revalidatePath(`/dashboard/${listingId}`)
+    return { status: 'success', message: 'Details saved.' }
   } catch (error) {
     return { status: 'error', message: partnerErrorMessage(error) }
   }

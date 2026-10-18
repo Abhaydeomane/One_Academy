@@ -1,9 +1,11 @@
 import { Badge } from '@one/ui'
-import { partnerListingDetail } from '@one/shared'
+import { partnerListingDetail, partnerReferenceResponse } from '@one/shared'
 import { partnerApiGet } from '@/lib/api'
 import { ActionButton } from './ActionButton'
 import { BatchForm } from './BatchForm'
-import { publishBatchAction, submitListingAction } from './actions'
+import { StatusBanner } from './StatusBanner'
+import { VerificationForm } from './VerificationForm'
+import { publishBatchAction } from './actions'
 
 type Params = Promise<{ listingId: string }>
 
@@ -11,7 +13,10 @@ const RUPEES = new Intl.NumberFormat('en-IN')
 
 export default async function ListingDetailPage({ params }: { params: Params }) {
   const { listingId } = await params
-  const listing = await partnerApiGet(`/api/v1/partner/listings/${listingId}`, partnerListingDetail)
+  const [listing, reference] = await Promise.all([
+    partnerApiGet(`/api/v1/partner/listings/${listingId}`, partnerListingDetail),
+    partnerApiGet('/api/v1/partner/reference', partnerReferenceResponse),
+  ])
 
   return (
     <section className="space-y-7">
@@ -22,23 +27,15 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
         </div>
         <p className="text-sm text-gray-600">{listing.cityName}</p>
 
-        {listing.status === 'DRAFT' ? (
-          <div className="pt-1">
-            <ActionButton
-              action={submitListingAction}
-              label="Submit for review"
-              pendingLabel="Submitting…"
-              hidden={{ listingId }}
-            />
-          </div>
-        ) : null}
-
-        {listing.status === 'PENDING_REVIEW' ? (
-          <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-gray-700">
-            Awaiting review by One Academy. You can keep editing batches meanwhile.
-          </p>
-        ) : null}
+        <StatusBanner listing={listing} />
       </header>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold">Verification details</h2>
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <VerificationForm listing={listing} reference={reference} />
+        </div>
+      </section>
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Batches</h2>
