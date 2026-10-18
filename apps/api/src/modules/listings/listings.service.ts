@@ -101,3 +101,9 @@ export async function publishAsAdmin(listingId: string): Promise<AdminListingSum
   if (!row) throw new NotFoundError('Listing not found')
   return toAdminSummary(row)
 }
+
+/// A slug is taken if a listing holds it or a redirect still answers for it;
+/// reusing a redirect's old slug would hijack its traffic.
+export async function isSlugTaken(slug: string): Promise<boolean> {
+  return (await repo.findBySlug(slug)) !== null || (await repo.findRedirectTarget(slug)) !== null
+}

@@ -1,9 +1,11 @@
 import { Router } from 'express'
 import {
   createBatchBody,
+  createListingBody,
   listingIdParam,
   updateListingBody,
   type CreateBatchBody,
+  type CreateListingBody,
   type ListingIdParam,
   type UpdateListingBody,
 } from '@one/shared'
@@ -18,6 +20,12 @@ partnerInstitutesRouter.use(requireAuth, requireOrg)
 partnerInstitutesRouter.get('/', async (req, res) => {
   const organizationId = await institutes.resolveOrganizationId(currentOrgId(req))
   res.json(await institutes.listForOrg(organizationId))
+})
+
+partnerInstitutesRouter.post('/', validate({ body: createListingBody }), async (req, res) => {
+  const body = validated<CreateListingBody>(req, 'body')
+  const organizationId = await institutes.resolveOrganizationId(currentOrgId(req))
+  res.status(201).json(await institutes.createForOrg(organizationId, body))
 })
 
 partnerInstitutesRouter.get(
@@ -61,3 +69,11 @@ partnerInstitutesRouter.post(
     res.json(await institutes.submitForReviewForOrg(listingId, organizationId))
   },
 )
+
+/// Mounted at /api/v1/partner/reference. It lives in this module because
+/// cities and exam tags are institute reference data.
+export const partnerReferenceRouter = Router()
+partnerReferenceRouter.use(requireAuth, requireOrg)
+partnerReferenceRouter.get('/', async (_req, res) => {
+  res.json(await institutes.referenceData())
+})

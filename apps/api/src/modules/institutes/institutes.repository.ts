@@ -163,6 +163,38 @@ export async function updateListingAndProfile(
   })
 }
 
+export async function listCities() {
+  return prisma.city.findMany({
+    orderBy: { name: 'asc' },
+    select: { slug: true, name: true, state: true },
+  })
+}
+
+export async function listExamTags() {
+  return prisma.tag.findMany({
+    where: { kind: 'EXAM' },
+    orderBy: { label: 'asc' },
+    select: { slug: true, label: true },
+  })
+}
+
+export async function findCityBySlug(slug: string): Promise<{ id: string; slug: string } | null> {
+  return prisma.city.findUnique({ where: { slug }, select: { id: true, slug: true } })
+}
+
+export async function createDraftListing(data: {
+  organizationId: string
+  cityId: string
+  name: string
+  slug: string
+}): Promise<string> {
+  const listing = await prisma.listing.create({
+    data: { ...data, vertical: 'INSTITUTE', status: 'DRAFT', instituteProfile: { create: {} } },
+    select: { id: true },
+  })
+  return listing.id
+}
+
 // Re-exported so the service has one import surface for institute data access.
 export {
   examFacets,

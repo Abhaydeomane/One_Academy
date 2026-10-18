@@ -92,3 +92,17 @@ export const updateBatchBody = z
     error: 'At least one field must be provided',
   })
 export type UpdateBatchBody = z.infer<typeof updateBatchBody>
+
+export const partnerReferenceResponse = z.object({
+  cities: z.array(z.object({ slug: z.string(), name: z.string(), state: z.string() })),
+  exams: z.array(z.object({ slug: z.string(), label: z.string() })),
+})
+export type PartnerReferenceResponse = z.infer<typeof partnerReferenceResponse>
+
+/// BR-011: no status and no organisation. Unknown keys are stripped, so a
+/// client that sends them changes nothing; the organisation comes from the session.
+export const createListingBody = z.object({
+  name: z.string().trim().min(2).max(200),
+  citySlug: z.string().min(1),
+})
+export type CreateListingBody = z.infer<typeof createListingBody>

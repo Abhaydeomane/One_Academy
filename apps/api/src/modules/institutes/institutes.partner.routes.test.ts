@@ -1,6 +1,10 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@one/db'
-import { partnerListingDetail, partnerListingListResponse } from '@one/shared'
+import {
+  partnerListingDetail,
+  partnerListingListResponse,
+  partnerReferenceResponse,
+} from '@one/shared'
 import { resetDb, seedMinimal, type MinimalSeed } from '../../../test/helpers/db.js'
 import { testApp } from '../../../test/helpers/app.js'
 import { fetchClerkOrganization } from '../../lib/clerk.js'
@@ -228,5 +232,91 @@ describe('PATCH /api/v1/partner/batches/:batchId', () => {
       .send({ status: 'PUBLISHED' })
     expect(res.status).toBe(409)
     expect(res.body.error.code).toBe('BATCH_PARENT_NOT_PUBLISHED')
+  })
+})
+
+describe('GET /api/v1/partner/reference', () => {
+  it('lists cities and exam tags', async () => {
+    const res = await testApp()
+      .get('/api/v1/partner/reference')
+      .set('x-test-auth', auth('co_alpha'))
+    expect(res.status).toBe(200)
+    const body = partnerReferenceResponse.parse(res.body)
+    expect(body.cities).toEqual([{ slug: 'pune', name: 'Pune', state: 'Maharashtra' }])
+    expect(body.exams).toEqual([{ slug: 'jee', label: 'JEE' }])
+  })
+})
+
+describe('POST /api/v1/partner/listings (BR-011)', () => {
+  it('creates a DRAFT for the session organisation, ignoring status and organizationId', async () => {
+    const res = await testApp()
+      .post('/api/v1/partner/listings')
+      .set('x-test-auth', auth('co_alpha'))
+      .send({
+        name: 'Gamma Classes',
+        citySlug: 'pune',
+        status: 'PUBLISHED',
+        organizationId: seed.otherOrgId,
+      })
+
+    expect(res.status).toBe(201)
+    const body = partnerListingDetail.parse(res.body)
+    expect(body.status).toBe('DRAFT')
+    expect(body.slug).toBe('gamma-classes-pune')
+
+    const row = await prisma.listing.findUniqueOrThrow({ where: { id: body.id } })
+    expect(row.organizationId).toBe(seed.orgId)
+  })
+
+  it('suffixes the slug when the same name is taken in the same city', async () => {
+    const first = await testApp()
+      .post('/api/v1/partner/listings')
+      .set('x-test-auth', auth('co_alpha'))
+      .send({ name: 'Gamma Classes', citySlug: 'pune' })
+    const second = await testApp()
+      .post('/api/v1/partner/listings')
+      .set('x-test-auth', auth('co_beta'))
+      .send({ name: 'Gamma Classes', citySlug: 'pune' })
+
+    expect(first.body.slug).toBe('gamma-classes-pune')
+    expect(second.status).toBe(201)
+    expect(second.body.slug).toBe('gamma-classes-pune-2')
+  })
+
+  it('avoids a slug held by a redirect', async () => {
+    await prisma.listingRedirect.create({
+      data: { listingId: seed.publishedListingId, oldSlug: 'gamma-classes-pune' },
+    })
+    const res = await testApp()
+      .post('/api/v1/partner/listings')
+      .set('x-test-auth', auth('co_alpha'))
+      .send({ name: 'Gamma Classes', citySlug: 'pune' })
+    expect(res.body.slug).toBe('gamma-classes-pune-2')
+  })
+
+  it('builds a slug from the city alone for a non-Latin name', async () => {
+    const res = await testApp()
+      .post('/api/v1/partner/listings')
+      .set('x-test-auth', auth('co_alpha'))
+      .send({ name: 'ज्ञान अकादमी', citySlug: 'pune' })
+    expect(res.status).toBe(201)
+    expect(res.body.slug).toBe('pune')
+  })
+
+  it('400s an unknown city', async () => {
+    const res = await testApp()
+      .post('/api/v1/partner/listings')
+      .set('x-test-auth', auth('co_alpha'))
+      .send({ name: 'Gamma Classes', citySlug: 'atlantis' })
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('VALIDATION_FAILED')
+  })
+
+  it('400s a one-character name', async () => {
+    const res = await testApp()
+      .post('/api/v1/partner/listings')
+      .set('x-test-auth', auth('co_alpha'))
+      .send({ name: ' G ', citySlug: 'pune' })
+    expect(res.status).toBe(400)
   })
 })

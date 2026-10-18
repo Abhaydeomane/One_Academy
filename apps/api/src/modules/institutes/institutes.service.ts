@@ -1,22 +1,26 @@
 import type {
   BatchSummary,
   CreateBatchBody,
+  CreateListingBody,
   InstituteDetail,
   InstituteListResponse,
   InstituteSort,
   InstituteSummary,
   ListInstitutesQuery,
   Paginated,
+  PartnerReferenceResponse,
   PartnerListingDetail,
   PartnerListingListResponse,
   PartnerListingSummary,
   UpdateListingBody,
 } from '@one/shared'
-import { NotFoundError } from '../../lib/errors.js'
+import { BadRequestError, ConflictError, NotFoundError } from '../../lib/errors.js'
+import { slugify } from '../../lib/slug.js'
 import * as accounts from '../accounts/accounts.service.js'
 import * as batches from '../batches/batches.service.js'
 import {
   assertOrgOwnsListing,
+  isSlugTaken,
   resolvePublishedSlug,
   submitForReview,
 } from '../listings/listings.service.js'
@@ -217,4 +221,40 @@ export async function updateForOrg(
   )
 
   return getForOrg(listingId, organizationId)
+}
+
+export async function referenceData(): Promise<PartnerReferenceResponse> {
+  const [cities, exams] = await Promise.all([repo.listCities(), repo.listExamTags()])
+  return { cities, exams }
+}
+
+const MAX_SLUG_ATTEMPTS = 100
+
+async function availableListingSlug(base: string): Promise<string> {
+  for (let attempt = 1; attempt <= MAX_SLUG_ATTEMPTS; attempt++) {
+    const candidate = attempt === 1 ? base : `${base}-${attempt}`
+    if (!(await isSlugTaken(candidate))) return candidate
+  }
+  throw new ConflictError('CONFLICT', 'Could not allocate a listing address')
+}
+
+/// BR-011: always a DRAFT, always under the session's organisation.
+export async function createForOrg(
+  organizationId: string,
+  body: CreateListingBody,
+): Promise<PartnerListingDetail> {
+  const city = await repo.findCityBySlug(body.citySlug)
+  if (!city) {
+    throw new BadRequestError('Unknown city', { fieldErrors: { citySlug: ['Unknown city'] } })
+  }
+  // The city slug alone is always non-empty, so a non-Latin name still yields
+  // a usable address.
+  const slug = await availableListingSlug(slugify(`${body.name} ${city.slug}`))
+  const id = await repo.createDraftListing({
+    organizationId,
+    cityId: city.id,
+    name: body.name,
+    slug,
+  })
+  return getForOrg(id, organizationId)
 }

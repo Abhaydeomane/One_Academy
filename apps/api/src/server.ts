@@ -8,7 +8,10 @@ import { partnerBatchesRouter } from './modules/batches/batches.partner.routes.j
 import { enquiriesRouter } from './modules/enquiries/enquiries.routes.js'
 import { compareRouter } from './modules/institutes/institutes.compare.routes.js'
 import { landingRouter } from './modules/institutes/institutes.landing.routes.js'
-import { partnerInstitutesRouter } from './modules/institutes/institutes.partner.routes.js'
+import {
+  partnerInstitutesRouter,
+  partnerReferenceRouter,
+} from './modules/institutes/institutes.partner.routes.js'
 import { institutesRouter } from './modules/institutes/institutes.routes.js'
 import { adminListingsRouter } from './modules/listings/listings.admin.routes.js'
 
@@ -51,6 +54,7 @@ export function createServer(): Express {
   app.use('/api/v1/compare', compareRouter)
   app.use('/api/v1/enquiries', enquiriesRouter)
   app.use('/api/v1/partner/listings', partnerInstitutesRouter)
+  app.use('/api/v1/partner/reference', partnerReferenceRouter)
   app.use('/api/v1/partner/batches', partnerBatchesRouter)
   app.use('/api/v1/admin/listings', adminListingsRouter)
 
