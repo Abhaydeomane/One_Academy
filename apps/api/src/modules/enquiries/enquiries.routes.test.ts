@@ -44,6 +44,18 @@ describe('POST /api/v1/enquiries', () => {
     expect(res.status).toBe(400)
   })
 
+  it('404s an enquiry against a suspended listing (BR-009)', async () => {
+    await prisma.listing.update({
+      where: { id: seed.publishedListingId },
+      data: { status: 'SUSPENDED' },
+    })
+    const res = await testApp()
+      .post('/api/v1/enquiries')
+      .send({ ...valid(), listingSlug: seed.publishedSlug })
+    expect(res.status).toBe(404)
+    expect(await prisma.enquiry.count()).toBe(0)
+  })
+
   it('404s an enquiry against a draft listing (BR-009)', async () => {
     const res = await testApp()
       .post('/api/v1/enquiries')

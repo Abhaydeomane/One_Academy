@@ -116,6 +116,7 @@ export type PartnerListingRow = {
   address: string | null
   contactPhone: string | null
   rejectionReason: string | null
+  suspensionReason: string | null
   shortDescription: string | null
   updatedAt: Date
   firstPublishedAt: Date | null
@@ -134,6 +135,7 @@ const PARTNER_SELECT = {
   address: true,
   contactPhone: true,
   rejectionReason: true,
+  suspensionReason: true,
   shortDescription: true,
   updatedAt: true,
   firstPublishedAt: true,

@@ -24,6 +24,15 @@ describe('GET /api/v1/institutes', () => {
     expect(body.items[0]?.slug).toBe(seed.publishedSlug)
   })
 
+  it('omits a suspended listing (BR-009)', async () => {
+    await prisma.listing.update({
+      where: { id: seed.publishedListingId },
+      data: { status: 'SUSPENDED' },
+    })
+    const body = instituteListResponse.parse((await testApp().get('/api/v1/institutes')).body)
+    expect(body.total).toBe(0)
+  })
+
   it('applies pagination defaults', async () => {
     const body = instituteListResponse.parse((await testApp().get('/api/v1/institutes')).body)
     expect(body.page).toBe(1)
@@ -135,6 +144,15 @@ describe('GET /api/v1/institutes/:slug', () => {
     expect(body.establishedYear).toBe(2011)
   })
 
+  it('404s a suspended listing (BR-009)', async () => {
+    await prisma.listing.update({
+      where: { id: seed.publishedListingId },
+      data: { status: 'SUSPENDED' },
+    })
+    const res = await testApp().get(`/api/v1/institutes/${seed.publishedSlug}`)
+    expect(res.status).toBe(404)
+  })
+
   it('404s a draft listing (BR-009)', async () => {
     const res = await testApp().get(`/api/v1/institutes/${seed.draftSlug}`)
     expect(res.status).toBe(404)
@@ -167,6 +185,15 @@ describe('GET /api/v1/institutes/:slug/batches', () => {
     expect(body.items[0]?.feeAmount).toBe(12500000)
     expect(Number.isInteger(body.items[0]?.feeAmount)).toBe(true)
     expect(body.items[0]?.feeCurrency).toBe('INR')
+  })
+
+  it('404s the batches of a suspended listing', async () => {
+    await prisma.listing.update({
+      where: { id: seed.publishedListingId },
+      data: { status: 'SUSPENDED' },
+    })
+    const res = await testApp().get(`/api/v1/institutes/${seed.publishedSlug}/batches`)
+    expect(res.status).toBe(404)
   })
 
   it('404s for a draft listing', async () => {

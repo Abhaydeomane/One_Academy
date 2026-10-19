@@ -147,6 +147,13 @@ model Listing {
   contactPhone     String?
   /// Latest rejection reason (BR-014). Cleared on the next submit.
   rejectionReason  String?
+  /// Latest suspension reason (BR-015), shown to the partner. Cleared when the
+  /// listing is published again.
+  suspensionReason       String?
+  suspendedAt            DateTime?
+  /// Clerk user id of the admin who suspended it. A plain string, as
+  /// Organization.verifiedByClerkUserId.
+  suspendedByClerkUserId String?
   submittedAt      DateTime?
   lat              Float?
   lng              Float?

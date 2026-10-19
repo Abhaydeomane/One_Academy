@@ -356,3 +356,104 @@ describe('queue ordering', () => {
     expect(items.map((i) => i.id)).toEqual([seed.draftListingId, newer.id])
   })
 })
+
+const suspend = (id: string, reason = 'Fraudulent institute reported by students') =>
+  testApp()
+    .post(`/api/v1/admin/listings/${id}/suspend`)
+    .set('x-test-auth', asAdmin)
+    .send({ reason })
+
+const reinstate = (id: string) =>
+  testApp().post(`/api/v1/admin/listings/${id}/reinstate`).set('x-test-auth', asAdmin)
+
+describe('POST /api/v1/admin/listings/:listingId/suspend (BR-015)', () => {
+  it('403s a non-admin and leaves the listing PUBLISHED', async () => {
+    const res = await testApp()
+      .post(`/api/v1/admin/listings/${seed.publishedListingId}/suspend`)
+      .set('x-test-auth', asUser)
+      .send({ reason: 'Fraudulent institute reported by students' })
+    expect(res.status).toBe(403)
+    const listing = await prisma.listing.findUniqueOrThrow({
+      where: { id: seed.publishedListingId },
+    })
+    expect(listing.status).toBe('PUBLISHED')
+  })
+
+  it('suspends a published listing with the reason, time and admin', async () => {
+    const res = await suspend(seed.publishedListingId, '  Fraudulent institute reported  ')
+    expect(res.status).toBe(200)
+    expect(adminListingSummary.parse(res.body).suspensionReason).toBe(
+      'Fraudulent institute reported',
+    )
+    const listing = await prisma.listing.findUniqueOrThrow({
+      where: { id: seed.publishedListingId },
+    })
+    expect(listing.status).toBe('SUSPENDED')
+    expect(listing.suspensionReason).toBe('Fraudulent institute reported')
+    expect(listing.suspendedAt).toBeInstanceOf(Date)
+    expect(listing.suspendedByClerkUserId).toBe('u-admin')
+  })
+
+  it('400s a reason shorter than 10 characters after trimming', async () => {
+    const res = await suspend(seed.publishedListingId, '   short   ')
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('VALIDATION_FAILED')
+  })
+
+  it.each(['DRAFT', 'PENDING_REVIEW', 'SUSPENDED'] as const)('409s from %s', async (status) => {
+    await prisma.listing.update({ where: { id: seed.publishedListingId }, data: { status } })
+    const res = await suspend(seed.publishedListingId)
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('INVALID_STATUS_TRANSITION')
+  })
+
+  it('lets exactly one of two concurrent suspends win', async () => {
+    const results = await Promise.all([
+      suspend(seed.publishedListingId),
+      suspend(seed.publishedListingId),
+    ])
+    expect(results.map((res) => res.status).sort()).toEqual([200, 409])
+  })
+
+  it('404s an unknown listing', async () => {
+    expect((await suspend('nope')).status).toBe(404)
+  })
+})
+
+describe('POST /api/v1/admin/listings/:listingId/reinstate (BR-016)', () => {
+  it('returns a suspended listing to PUBLISHED and clears the suspension', async () => {
+    await suspend(seed.publishedListingId)
+    const res = await reinstate(seed.publishedListingId)
+    expect(res.status).toBe(200)
+    const listing = await prisma.listing.findUniqueOrThrow({
+      where: { id: seed.publishedListingId },
+    })
+    expect(listing.status).toBe('PUBLISHED')
+    expect(listing.suspensionReason).toBeNull()
+    expect(listing.suspendedAt).toBeNull()
+    expect(listing.suspendedByClerkUserId).toBeNull()
+  })
+
+  it('409s a listing that is not suspended', async () => {
+    const res = await reinstate(seed.publishedListingId)
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('INVALID_STATUS_TRANSITION')
+  })
+
+  it('403s a non-admin', async () => {
+    await suspend(seed.publishedListingId)
+    const res = await testApp()
+      .post(`/api/v1/admin/listings/${seed.publishedListingId}/reinstate`)
+      .set('x-test-auth', asUser)
+    expect(res.status).toBe(403)
+  })
+
+  it('lets exactly one of two concurrent reinstates win', async () => {
+    await suspend(seed.publishedListingId)
+    const results = await Promise.all([
+      reinstate(seed.publishedListingId),
+      reinstate(seed.publishedListingId),
+    ])
+    expect(results.map((res) => res.status).sort()).toEqual([200, 409])
+  })
+})

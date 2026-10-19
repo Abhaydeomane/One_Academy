@@ -28,6 +28,7 @@ import {
   partnerListingListResponse,
   partnerReferenceResponse,
   rejectListingBody,
+  suspendListingBody,
   updateBatchBody,
   updateListingBody,
 } from '../src/contracts/index.js'
@@ -284,6 +285,40 @@ registry.registerPath({
   responses: {
     200: { description: 'Rejected', ...json(adminListingSummary) },
     400: BAD_REQUEST,
+    401: UNAUTHENTICATED,
+    403: FORBIDDEN,
+    404: NOT_FOUND,
+    409: CONFLICT,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/admin/listings/{listingId}/suspend',
+  summary: 'Take a published listing off the site with a reason',
+  description:
+    'Only a PUBLISHED listing (BR-015). Reason is 10–500 characters after trimming and is shown to the institute.',
+  security: secured,
+  request: { params: z.object({ listingId: z.string() }), body: json(suspendListingBody) },
+  responses: {
+    200: { description: 'Suspended', ...json(adminListingSummary) },
+    400: BAD_REQUEST,
+    401: UNAUTHENTICATED,
+    403: FORBIDDEN,
+    404: NOT_FOUND,
+    409: CONFLICT,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/admin/listings/{listingId}/reinstate',
+  summary: 'Lift a suspension and put the listing back on the site',
+  description: 'Only a SUSPENDED listing (BR-016). Clears the suspension reason.',
+  security: secured,
+  request: { params: z.object({ listingId: z.string() }) },
+  responses: {
+    200: { description: 'Reinstated', ...json(adminListingSummary) },
     401: UNAUTHENTICATED,
     403: FORBIDDEN,
     404: NOT_FOUND,

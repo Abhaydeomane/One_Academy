@@ -10,6 +10,7 @@ import {
   listInstitutesQuery,
   rejectListingBody,
   updateListingBody,
+  suspendListingBody,
 } from './index.js'
 
 describe('listInstitutesQuery', () => {
@@ -257,5 +258,15 @@ describe('rejectListingBody (BR-014)', () => {
 
   it('rejects more than 500 characters', () => {
     expect(rejectListingBody.safeParse({ reason: 'x'.repeat(501) }).success).toBe(false)
+  })
+})
+
+describe('suspendListingBody (BR-015)', () => {
+  it('trims and bounds the reason', () => {
+    expect(suspendListingBody.safeParse({ reason: `  ${'a'.repeat(9)}  ` }).success).toBe(false)
+    expect(suspendListingBody.parse({ reason: `  ${'a'.repeat(10)}  ` }).reason).toBe(
+      'a'.repeat(10),
+    )
+    expect(suspendListingBody.safeParse({ reason: 'a'.repeat(501) }).success).toBe(false)
   })
 })

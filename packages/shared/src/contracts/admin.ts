@@ -22,6 +22,7 @@ export const adminListingSummary = z.object({
   website: z.string().nullable(),
   submittedAt: z.iso.datetime().nullable(),
   updatedAt: z.iso.datetime(),
+  suspensionReason: z.string().nullable(),
 })
 export type AdminListingSummary = z.infer<typeof adminListingSummary>
 
@@ -33,12 +34,18 @@ export const adminListingDetail = adminListingSummary.extend({
   exams: z.array(z.string()),
   batchCount: z.number().int(),
   rejectionReason: z.string().nullable(),
+  suspendedAt: z.iso.datetime().nullable(),
+  firstPublishedAt: z.iso.datetime().nullable(),
 })
 export type AdminListingDetail = z.infer<typeof adminListingDetail>
 
 /// BR-014. Trimmed first, so padding cannot satisfy the minimum.
 export const rejectListingBody = z.object({ reason: z.string().trim().min(10).max(500) })
 export type RejectListingBody = z.infer<typeof rejectListingBody>
+
+/// BR-015. The institute sees the reason, so it gets the same bounds as a rejection.
+export const suspendListingBody = z.object({ reason: z.string().trim().min(10).max(500) })
+export type SuspendListingBody = z.infer<typeof suspendListingBody>
 
 export const adminListingQueueResponse = paginated(adminListingSummary)
 export type AdminListingQueueResponse = z.infer<typeof adminListingQueueResponse>

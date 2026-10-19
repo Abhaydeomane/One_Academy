@@ -3,9 +3,11 @@ import {
   adminListingQueueQuery,
   listingIdParam,
   rejectListingBody,
+  suspendListingBody,
   type AdminListingQueueQuery,
   type ListingIdParam,
   type RejectListingBody,
+  type SuspendListingBody,
 } from '@one/shared'
 import { currentAuth, requireAdmin, requireAuth } from '../../middleware/auth.js'
 import { validate, validated } from '../../middleware/validate.js'
@@ -42,5 +44,24 @@ adminListingsRouter.post(
     const { listingId } = validated<ListingIdParam>(req, 'params')
     const { reason } = validated<RejectListingBody>(req, 'body')
     res.json(await listings.rejectAsAdmin(listingId, reason))
+  },
+)
+
+adminListingsRouter.post(
+  '/:listingId/suspend',
+  validate({ params: listingIdParam, body: suspendListingBody }),
+  async (req, res) => {
+    const { listingId } = validated<ListingIdParam>(req, 'params')
+    const { reason } = validated<SuspendListingBody>(req, 'body')
+    res.json(await listings.suspendAsAdmin(listingId, reason, currentAuth(req).userId))
+  },
+)
+
+adminListingsRouter.post(
+  '/:listingId/reinstate',
+  validate({ params: listingIdParam }),
+  async (req, res) => {
+    const { listingId } = validated<ListingIdParam>(req, 'params')
+    res.json(await listings.reinstateAsAdmin(listingId))
   },
 )

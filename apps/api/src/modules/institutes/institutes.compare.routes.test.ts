@@ -157,6 +157,17 @@ describe('GET /api/v1/compare', () => {
     expect(res.body.dropped).toEqual([{ slug: 'ghost', reason: 'NOT_FOUND' }])
   })
 
+  it('drops a SUSPENDED listing (BR-009)', async () => {
+    await prisma.listing.update({
+      where: { slug: 'draft-academy' },
+      data: { status: 'SUSPENDED' },
+    })
+    const res = await get('slug=alpha&slug=beta&slug=draft-academy')
+    expect(res.status).toBe(200)
+    expect(res.body.columns).toHaveLength(2)
+    expect(res.body.dropped).toEqual([{ slug: 'draft-academy', reason: 'NOT_FOUND' }])
+  })
+
   it('never shows a DRAFT listing (BR-009)', async () => {
     const res = await get('slug=alpha&slug=beta&slug=draft-academy')
 

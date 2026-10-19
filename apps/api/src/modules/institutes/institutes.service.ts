@@ -154,6 +154,7 @@ function toPartnerSummary(row: repo.PartnerListingRow): PartnerListingSummary {
     cityName: row.city.name,
     batchCount: row._count.batches,
     rejectionReason: row.rejectionReason,
+    suspensionReason: row.suspensionReason,
     updatedAt: row.updatedAt.toISOString(),
   }
 }
@@ -181,6 +182,7 @@ export async function getForOrg(
     shortDescription: row.shortDescription,
     about: row.instituteProfile?.about ?? null,
     website: row.instituteProfile?.website ?? null,
+    firstPublishedAt: row.firstPublishedAt ? row.firstPublishedAt.toISOString() : null,
     batches: await batches.listAllForListing(listingId),
   }
 }

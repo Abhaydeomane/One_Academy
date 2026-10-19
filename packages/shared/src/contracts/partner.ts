@@ -25,6 +25,7 @@ export const partnerListingSummary = z.object({
   cityName: z.string(),
   batchCount: z.number().int(),
   rejectionReason: z.string().nullable(),
+  suspensionReason: z.string().nullable(),
   updatedAt: z.iso.datetime(),
 })
 export type PartnerListingSummary = z.infer<typeof partnerListingSummary>
@@ -47,6 +48,8 @@ export const partnerListingDetail = partnerListingSummary.extend({
   shortDescription: z.string().nullable(),
   about: z.string().nullable(),
   website: z.string().nullable(),
+  /// Null until first publication; afterwards the city is fixed (BR-002).
+  firstPublishedAt: z.iso.datetime().nullable(),
   batches: z.array(partnerBatchSummary),
 })
 export type PartnerListingDetail = z.infer<typeof partnerListingDetail>

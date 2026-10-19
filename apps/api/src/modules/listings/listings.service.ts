@@ -109,6 +109,7 @@ function toAdminSummary(row: repo.ModerationRow | repo.ModerationDetailRow): Adm
     website: row.instituteProfile?.website ?? null,
     submittedAt: row.submittedAt ? row.submittedAt.toISOString() : null,
     updatedAt: row.updatedAt.toISOString(),
+    suspensionReason: row.suspensionReason,
   }
 }
 
@@ -124,6 +125,8 @@ export async function getForModeration(listingId: string): Promise<AdminListingD
     exams: row.tags.filter((entry) => entry.tag.kind === 'EXAM').map((entry) => entry.tag.slug),
     batchCount: row._count.batches,
     rejectionReason: row.rejectionReason,
+    suspendedAt: row.suspendedAt ? row.suspendedAt.toISOString() : null,
+    firstPublishedAt: row.firstPublishedAt ? row.firstPublishedAt.toISOString() : null,
   }
 }
 
@@ -171,6 +174,55 @@ export async function rejectAsAdmin(
   const row = await repo.findModerationRow(listingId)
   if (!row) throw new NotFoundError('Listing not found')
   return toAdminSummary(row)
+}
+
+async function moderationSummary(listingId: string): Promise<AdminListingSummary> {
+  const row = await repo.findModerationRow(listingId)
+  if (!row) throw new NotFoundError('Listing not found')
+  return toAdminSummary(row)
+}
+
+/// BR-015: only a live listing can be suspended, and only by an admin (the
+/// router enforces that). The partner sees the reason.
+export async function suspendAsAdmin(
+  listingId: string,
+  reason: string,
+  adminClerkUserId: string,
+): Promise<AdminListingSummary> {
+  const listing = await repo.findById(listingId)
+  if (!listing) throw new NotFoundError('Listing not found')
+  if (listing.status !== 'PUBLISHED') {
+    throw new ConflictError(
+      'INVALID_STATUS_TRANSITION',
+      `Only a published listing can be suspended; this listing is ${listing.status}`,
+    )
+  }
+  if ((await repo.markSuspended(listingId, reason, new Date(), adminClerkUserId)) === 0) {
+    throw new ConflictError(
+      'INVALID_STATUS_TRANSITION',
+      'This listing was changed by another admin; reload and retry',
+    )
+  }
+  return moderationSummary(listingId)
+}
+
+/// BR-016: lifting a suspension puts the listing straight back on the site.
+export async function reinstateAsAdmin(listingId: string): Promise<AdminListingSummary> {
+  const listing = await repo.findById(listingId)
+  if (!listing) throw new NotFoundError('Listing not found')
+  if (listing.status !== 'SUSPENDED') {
+    throw new ConflictError(
+      'INVALID_STATUS_TRANSITION',
+      `Only a suspended listing can be reinstated; this listing is ${listing.status}`,
+    )
+  }
+  if ((await repo.markReinstated(listingId)) === 0) {
+    throw new ConflictError(
+      'INVALID_STATUS_TRANSITION',
+      'This listing was changed by another admin; reload and retry',
+    )
+  }
+  return moderationSummary(listingId)
 }
 
 /// A slug is taken if a listing holds it or a redirect still answers for it;

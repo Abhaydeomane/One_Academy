@@ -55,6 +55,7 @@ export type ModerationRow = {
   submittedAt: Date | null
   address: string | null
   contactPhone: string | null
+  suspensionReason: string | null
   organization: { name: string; verifiedAt: Date | null }
   city: { name: string }
   instituteProfile: { website: string | null } | null
@@ -69,6 +70,7 @@ const MODERATION_SELECT = {
   submittedAt: true,
   address: true,
   contactPhone: true,
+  suspensionReason: true,
   organization: { select: { name: true, verifiedAt: true } },
   city: { select: { name: true } },
   instituteProfile: { select: { website: true } },
@@ -78,6 +80,8 @@ export type ModerationDetailRow = Omit<ModerationRow, 'instituteProfile'> & {
   locality: string | null
   shortDescription: string | null
   rejectionReason: string | null
+  suspendedAt: Date | null
+  firstPublishedAt: Date | null
   instituteProfile: { website: string | null; about: string | null; modes: Mode[] } | null
   tags: { tag: { slug: string; kind: 'EXAM' | 'AMENITY' | 'FACILITY' } }[]
   _count: { batches: number }
@@ -88,6 +92,8 @@ const MODERATION_DETAIL_SELECT = {
   locality: true,
   shortDescription: true,
   rejectionReason: true,
+  suspendedAt: true,
+  firstPublishedAt: true,
   instituteProfile: { select: { website: true, about: true, modes: true } },
   tags: { select: { tag: { select: { slug: true, kind: true } } } },
   _count: { select: { batches: true } },
@@ -136,6 +142,41 @@ export async function markRejected(id: string, reason: string): Promise<number> 
   return result.count
 }
 
+const NOT_SUSPENDED = {
+  suspensionReason: null,
+  suspendedAt: null,
+  suspendedByClerkUserId: null,
+} as const
+
+/// BR-015. Conditional on PUBLISHED; returns the rows changed (0 means the
+/// listing was not live, or a concurrent decision got there first).
+export async function markSuspended(
+  id: string,
+  reason: string,
+  at: Date,
+  adminClerkUserId: string,
+): Promise<number> {
+  const result = await prisma.listing.updateMany({
+    where: { id, status: 'PUBLISHED' },
+    data: {
+      status: 'SUSPENDED',
+      suspensionReason: reason,
+      suspendedAt: at,
+      suspendedByClerkUserId: adminClerkUserId,
+    },
+  })
+  return result.count
+}
+
+/// BR-016. Conditional on SUSPENDED; clears the suspension.
+export async function markReinstated(id: string): Promise<number> {
+  const result = await prisma.listing.updateMany({
+    where: { id, status: 'SUSPENDED' },
+    data: { status: 'PUBLISHED', ...NOT_SUSPENDED },
+  })
+  return result.count
+}
+
 /// BR-013 needs the listing and its organisation to change together. The
 /// organisation write lives here rather than behind accounts.service because
 /// it must share the transaction; the verifiedAt: null guard means an existing
@@ -151,7 +192,7 @@ export async function publishAndVerify(
   return prisma.$transaction(async (tx) => {
     const listing = await tx.listing.updateMany({
       where: { id, status: 'PENDING_REVIEW' },
-      data: { status: 'PUBLISHED', publishedAt: at, rejectionReason: null },
+      data: { status: 'PUBLISHED', publishedAt: at, rejectionReason: null, ...NOT_SUSPENDED },
     })
     if (listing.count === 0) return false
     await tx.listing.updateMany({

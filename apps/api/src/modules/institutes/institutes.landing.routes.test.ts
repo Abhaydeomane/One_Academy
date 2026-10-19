@@ -119,6 +119,13 @@ describe('GET /api/v1/landing — eligibility', () => {
     expect(body.indexable).toBe(true)
   })
 
+  it('does not count a suspended listing', async () => {
+    await prisma.listing.update({ where: { slug: 'pune-a' }, data: { status: 'SUSPENDED' } })
+    const body = landingPageResponse.parse((await get('/jee-coaching-in-pune')).body)
+    expect(body.listings.total).toBe(2)
+    expect(body.indexable).toBe(false)
+  })
+
   it('is not indexable at two listings', async () => {
     const body = landingPageResponse.parse((await get('/offline-jee-coaching-in-pune')).body)
     expect(body.listings.total).toBe(2)
