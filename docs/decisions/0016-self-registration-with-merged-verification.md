@@ -72,6 +72,6 @@ partner's first request.
 - Admin rights come from Clerk session metadata (ADR 0006), not the database.
 - Edits made after submission (while PENDING_REVIEW) or after publication are not
   re-reviewed in P2a. An approval can cover details changed after the admin opened the
-  review page, and a published listing can be renamed without review. Closing this is P2b
-  moderation work.
+  review page, and a published listing can be renamed without review. Closed in P2b:
+  edits are locked during review (BR-017) and published edits are flagged (ADR 0017).
 - The webhook stays the normal path; on-demand provisioning only closes the race.

@@ -132,3 +132,20 @@ and keeps rejecting that import everywhere else.
   the min/max aggregate. The aggregate tests whether a listing's fee _interval_ overlaps
   the range, which is a different question: a listing with batches at ₹25,000 and
   ₹1,00,000 would match a ₹40,000–₹50,000 filter despite having nothing in that band.
+
+## Listing moderation (P2b)
+
+Read `docs/flows/listing-lifecycle.md` and ADRs 0016–0018 before changing transitions.
+
+- **Every status transition is an `updateMany` guarded on the status it starts from.** Zero
+  rows changed means another decision won: throw `INVALID_STATUS_TRANSITION`.
+- **"Has this listing been public?" is `hasEverBeenPublished` (`firstPublishedAt`), never a
+  status check.** The slug and city freezes depend on it, and so does where a listing
+  leaving review goes (`returnStatusFor`). `publishedAt` is reset on every publish and drives
+  the "recent" sort; do not reuse it.
+- **Call `revalidatePublicPages()` after any write that changes what the public sees**, once
+  the write has committed. It never throws; surface its result where an admin needs to
+  know.
+- Partner edits go through `ensureReviewBaseline` before and `recordPartnerEdit` after the
+  write (BR-018). A new editable listing field the public reads belongs in
+  `WATCHED_LISTING_FIELDS`.

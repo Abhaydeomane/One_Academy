@@ -1,11 +1,14 @@
 # Flow: Institute discovery
 
-Last verified against commit: b33114e3c11fdb170636f06a99053a48345b2f50
+Last verified against commit: c1dcd0cf246cd60346428ddff588360b3ce79dcc
 
 ## Purpose
 
 How an anonymous student finds an institute, reads its batches and submits an enquiry.
 This is the acquisition path, so every step is cacheable, indexable and mobile-first.
+Every public API response is cached under the `listings` tag in `apps/web/src/lib/api.ts`;
+the API expires it after any moderation change (ADR 0018), so a suspended listing is gone
+on the next request rather than after the 300-second TTL.
 
 ## Actors and entry points
 

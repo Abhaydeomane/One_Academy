@@ -10,13 +10,20 @@ Partner-submitted content must not reach the public site unreviewed.
 - Implemented: `middleware/auth.ts requireAdmin`, `listings.service.publishAsAdmin`
 - Tested: `listings.admin.routes.test.ts`
 
-## BR-002 — A PUBLISHED slug is immutable; a change creates a ListingRedirect
+## BR-002 — A slug is immutable once the listing has ever been published
 
-Google is the acquisition channel, so a changed URL is lost traffic. Pre-publication
-renames are free; afterwards the old slug answers with a 301.
+Google is the acquisition channel, so a changed URL is lost traffic. Renames before first
+publication are free; afterwards the slug is frozen **whatever the listing's current
+status** — a suspended or resubmitted listing is still the URL Google holds. The test is
+`firstPublishedAt` (set once, never cleared), not `status`; the same test fixes the city
+(`CITY_IMMUTABLE`), because the URL embeds it. Amended in P2b: the original check read
+`status === 'PUBLISHED'` and would have let a suspended listing's rename move its URL.
 
-- Implemented: `listings.service.changeSlug`, `ListingRedirect`, `institutes.routes.ts`
-- Tested: `listings.service.test.ts`, `institutes.routes.test.ts`
+- Implemented: `listings.service.hasEverBeenPublished`, `listings.service.changeSlug`,
+  `institutes.service.updateForOrg`, `ListingRedirect`, `institutes.routes.ts`
+- Tested: `listings.service.test.ts`, `institutes.routes.test.ts`,
+  `institutes.partner.routes.test.ts` ("BR-002 amended"), `listings.admin.routes.test.ts`
+  (`firstPublishedAt` set on first publish only)
 
 ## BR-003 — A Batch cannot be PUBLISHED with a startDate in the past
 
@@ -69,9 +76,15 @@ should I join?", a detail-page question.
 Applied in the repository's `where` clause rather than per caller, so a new endpoint
 cannot forget it.
 
-- Implemented: `institutes.repository.listPublished`, `listings.service.resolvePublishedSlug`
+Holds at the edge too: after any change to what the public sees, the API expires the web
+app's `listings` cache tag (ADR 0018), so a suspended listing is gone on the next request.
+The 300-second TTL is only the fallback when that call fails.
+
+- Implemented: `institutes.repository.listPublished`, `listings.service.resolvePublishedSlug`,
+  `lib/revalidate.ts`, `apps/web/src/app/api/revalidate/route.ts`
 - Tested: `institutes.routes.test.ts`, `enquiries.routes.test.ts`, `listings.service.test.ts`,
-  and end to end in `e2e/tests/discovery.spec.ts`
+  the SUSPENDED cases in the compare and landing route tests, and end to end in
+  `e2e/tests/discovery.spec.ts` and `e2e/tests/revalidation.spec.ts`
 
 ## BR-010 — seatsAvailable is always between 0 and seatsTotal inclusive
 
@@ -120,3 +133,47 @@ conditional on PENDING_REVIEW, so a reject racing a publish cannot both succeed.
 
 - Implemented: `rejectListingBody`, `listings.service.rejectAsAdmin`
 - Tested: `contracts.test.ts`, `listings.admin.routes.test.ts`, e2e
+
+## BR-015 — Only a global ADMIN suspends, and only a PUBLISHED listing
+
+A reason of 10–500 characters (trimmed) is required and shown to the partner. Suspension
+hides the listing everywhere BR-009 applies; its batches and enquiries are untouched. The
+write is conditional on PUBLISHED, so concurrent decisions yield one success and one 409.
+
+- Implemented: `suspendListingBody`, `listings.service.suspendAsAdmin`,
+  `listings.repository.markSuspended`
+- Tested: `contracts.test.ts`, `listings.admin.routes.test.ts`, `e2e/tests/revalidation.spec.ts`
+
+## BR-016 — A suspended listing returns to PUBLISHED only through an ADMIN
+
+Either directly ("Lift suspension") or by approving the partner's resubmission
+(SUSPENDED → PENDING_REVIEW, with BR-012 applying). Both clear the suspension columns.
+Rejecting or withdrawing a resubmission returns it to SUSPENDED, not DRAFT
+(`listings.service.returnStatusFor`).
+
+- Implemented: `listings.service.reinstateAsAdmin`, `listings.service.submitForReview`,
+  `listings.repository.markReinstated`, `listings.repository.publishAndVerify`
+- Tested: `listings.admin.routes.test.ts`, `institutes.partner.routes.test.ts`
+
+## BR-017 — A listing's details cannot change while it is in review
+
+A partner `PATCH` on a PENDING_REVIEW listing is `409 LISTING_UNDER_REVIEW`; the partner
+withdraws it first (back to DRAFT, or SUSPENDED if it was ever public). What an admin
+approves is therefore exactly what they read. Batch endpoints are not locked: draft batches
+are invisible until the listing is published (BR-004).
+
+- Implemented: `institutes.service.updateForOrg`, `listings.service.withdrawFromReview`,
+  `listings.repository.markWithdrawn`
+- Tested: `institutes.partner.routes.test.ts`
+
+## BR-018 — An edit to a watched field of an ever-published listing goes live and is flagged
+
+`WATCHED_LISTING_FIELDS` in `@one/shared` is the single list. Publishing snapshots them; an
+edit that leaves any of them different from the snapshot sets `changedSinceReviewAt`, one
+that restores the snapshot clears it. Arrays compare as sets and an empty string equals
+null. "Looks fine" re-takes the snapshot, conditional on the `changedSinceReviewAt` the
+admin saw (`409 REVIEW_STALE` otherwise). See ADR 0017.
+
+- Implemented: `packages/shared/src/watched.ts`, `listings.service.ensureReviewBaseline`,
+  `recordPartnerEdit`, `markReviewedAsAdmin`, `listings.repository.listForModeration`
+- Tested: `watched.test.ts`, `institutes.partner.routes.test.ts`, `listings.admin.routes.test.ts`

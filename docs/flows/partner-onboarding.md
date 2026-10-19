@@ -1,6 +1,6 @@
 # Flow: Partner onboarding
 
-Last verified against commit: b38bc6fefd399a5637961c2d508071bbdddb76b8
+Last verified against commit: c1dcd0cf246cd60346428ddff588360b3ce79dcc
 
 ## Purpose
 
@@ -57,10 +57,14 @@ apps/partner/src/app/dashboard/[listingId]/page.tsx   StatusBanner checklist fro
   → apps/api/src/modules/institutes/institutes.service.ts updateForOrg
 ```
 
-`updateForOrg` validates everything (city and exam slugs, and that city is unchanged on a
-published listing) before writing, then writes the fields in one transaction. Changing a
-DRAFT's city or renaming a DRAFT regenerates its slug inside that same transaction
-(published slugs never change, BR-002). The phone is normalised by `normalizePhone` in the
+`updateForOrg` refuses any edit while the listing is in review (`409 LISTING_UNDER_REVIEW`,
+BR-017; the form is read-only with a withdraw button). Otherwise it validates everything
+(city and exam slugs, and that the city is unchanged on a listing that has ever been
+published) before writing, then writes the fields in one transaction. Changing the city of,
+or renaming, a listing that has never been public (`firstPublishedAt` is null) regenerates
+its slug inside that same transaction; once it has been public the slug never changes,
+whatever its status (BR-002). Edits to a once-published listing go live and are flagged
+for admin review (BR-018) — see `listing-lifecycle.md`. The phone is normalised by `normalizePhone` in the
 partner server action; the shared `phoneSchema` only validates exactly 10 digits. `website` must be http or https, and `safeHttpUrl` guards every
 place a stored website is rendered. On a failed save the form keeps what the partner typed;
 address, phone and exams cannot be cleared once set (the form returns a field error).

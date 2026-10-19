@@ -75,6 +75,25 @@ production build) — not both on the same port. `start` serves the build it was
 with, so after a code change rebuild and restart it; rebuilding underneath a running
 `next start` makes its CSS answer `500`.
 
+## Instant cache clearing (optional)
+
+Public pages cache for 300 seconds. To have publish and suspend show immediately (ADR
+0018), give the API and the web app the same secret of at least 32 characters:
+
+```bash
+# apps/api/.env
+WEB_REVALIDATE_URL=http://localhost:3000/api/revalidate
+REVALIDATE_SECRET=<32+ characters>
+
+# apps/web/.env.local
+REVALIDATE_SECRET=<the same value>
+```
+
+Without them everything works; changes simply take up to five minutes to reach the public
+site, and the admin screen says so. `pnpm e2e` sets its own values and starts a second,
+caching web server on port 3200 (build directory `.next-e2e-cached`) for
+`revalidation.spec.ts`.
+
 ## Testing on a phone
 
 Most traffic is phones, and desktop devtools' mobile view is still `localhost`, so it
