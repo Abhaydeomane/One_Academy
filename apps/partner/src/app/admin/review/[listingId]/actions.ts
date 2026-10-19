@@ -1,15 +1,22 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import {
   adminDecisionResponse,
+  adminMediaDeleteResponse,
   adminListingSummary,
   markReviewedBody,
   rejectListingBody,
   suspendListingBody,
 } from '@one/shared'
-import { PartnerApiError, partnerApiSend, partnerErrorMessage } from '@/lib/api'
+import {
+  PartnerApiError,
+  partnerApiDeleteJson,
+  partnerApiSend,
+  partnerErrorMessage,
+} from '@/lib/api'
 import type { ActionState } from '@/app/dashboard/[listingId]/actions'
 
 type Tab = 'review' | 'changed' | 'published' | 'suspended'
@@ -116,4 +123,23 @@ export async function markReviewedAction(
   })
   if (!body.success) return { status: 'error', message: 'This listing changed — reload' }
   return decide(id(formData), 'mark-reviewed', body.data, 'reviewed', 'changed')
+}
+
+/// Removes one logo or photo; returns the line to show under the grid.
+export async function deleteMediaAsAdminAction(
+  listingId: string,
+  assetId: string,
+): Promise<string> {
+  try {
+    const { publicCacheCleared } = await partnerApiDeleteJson(
+      `/api/v1/admin/listings/${listingId}/media/${assetId}`,
+      adminMediaDeleteResponse,
+    )
+    revalidatePath(`/admin/review/${listingId}`)
+    return publicCacheCleared
+      ? 'Deleted. Removed from the site.'
+      : 'Deleted. It may stay visible for up to 5 minutes.'
+  } catch (error) {
+    return partnerErrorMessage(error)
+  }
 }

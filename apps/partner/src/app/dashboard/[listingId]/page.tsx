@@ -3,6 +3,7 @@ import { partnerListingDetail, partnerReferenceResponse } from '@one/shared'
 import { partnerApiGet } from '@/lib/api'
 import { ActionButton } from './ActionButton'
 import { BatchForm } from './BatchForm'
+import { PhotosSection } from './PhotosSection'
 import { StatusBanner } from './StatusBanner'
 import { VerificationForm } from './VerificationForm'
 import { publishBatchAction } from './actions'
@@ -34,6 +35,17 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
         <h2 className="text-lg font-semibold">Verification details</h2>
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <VerificationForm listing={listing} reference={reference} />
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold">Photos</h2>
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <PhotosSection
+            listingId={listing.id}
+            media={listing.media}
+            locked={listing.status === 'PENDING_REVIEW'}
+          />
         </div>
       </section>
 

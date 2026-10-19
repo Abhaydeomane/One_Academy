@@ -9,6 +9,7 @@ export class PartnerApiError extends Error {
     readonly status: number,
     readonly code: ErrorCode | 'UNKNOWN',
     message: string,
+    readonly details?: unknown,
   ) {
     super(message)
     this.name = 'PartnerApiError'
@@ -25,7 +26,12 @@ async function toError(response: Response): Promise<PartnerApiError> {
   try {
     const parsed = errorEnvelope.safeParse(await response.json())
     if (parsed.success) {
-      return new PartnerApiError(response.status, parsed.data.error.code, parsed.data.error.message)
+      return new PartnerApiError(
+        response.status,
+        parsed.data.error.code,
+        parsed.data.error.message,
+        parsed.data.error.details,
+      )
     }
   } catch {
     // Non-JSON body; fall through.
@@ -46,7 +52,7 @@ export async function partnerApiGet<T>(path: string, schema: ZodType<T>): Promis
 
 export async function partnerApiSend<T>(
   path: string,
-  method: 'POST' | 'PATCH',
+  method: 'POST' | 'PATCH' | 'PUT',
   body: unknown,
   schema: ZodType<T>,
 ): Promise<T> {
@@ -62,6 +68,65 @@ export async function partnerApiSend<T>(
   })
   if (!response.ok) throw await toError(response)
   return schema.parse(await response.json())
+}
+
+export async function partnerApiDelete(path: string): Promise<void> {
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method: 'DELETE',
+    headers: { accept: 'application/json', ...(await authHeaders()) },
+    cache: 'no-store',
+  })
+  if (!response.ok) throw await toError(response)
+}
+
+/// A DELETE whose response carries a body (the admin media delete).
+export async function partnerApiDeleteJson<T>(path: string, schema: ZodType<T>): Promise<T> {
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method: 'DELETE',
+    headers: { accept: 'application/json', ...(await authHeaders()) },
+    cache: 'no-store',
+  })
+  if (!response.ok) throw await toError(response)
+  return schema.parse(await response.json())
+}
+
+/// Multipart upload; fetch sets the boundary when given FormData.
+export async function partnerApiUpload<T>(
+  path: string,
+  form: FormData,
+  schema: ZodType<T>,
+): Promise<T> {
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method: 'POST',
+    headers: { accept: 'application/json', ...(await authHeaders()) },
+    body: form,
+    cache: 'no-store',
+  })
+  if (!response.ok) throw await toError(response)
+  return schema.parse(await response.json())
+}
+
+const MEDIA_REASONS: Record<string, string> = {
+  NOT_AN_IMAGE: "That file isn't a photo we can use.",
+  TOO_LARGE: 'That photo is over 8 MB.',
+  TOO_MANY_PIXELS: 'That photo is too large to process.',
+}
+
+/// Copy for photo uploads (P2c spec §11), falling back to the general mapping.
+export function mediaErrorMessage(error: unknown): string {
+  if (error instanceof PartnerApiError) {
+    if (error.code === 'MEDIA_INVALID') {
+      const reason = (error.details as { reason?: string } | undefined)?.reason
+      return (reason && MEDIA_REASONS[reason]) ?? "That file isn't a photo we can use."
+    }
+    if (error.code === 'MEDIA_LIMIT_REACHED') {
+      return 'You already have 10 photos. Delete one to add another.'
+    }
+    if (error.code === 'UPSTREAM_UNAVAILABLE') {
+      return "We couldn't save that photo. Please try again."
+    }
+  }
+  return partnerErrorMessage(error)
 }
 
 /// Maps API error codes to partner-facing copy. Every business rule the API can

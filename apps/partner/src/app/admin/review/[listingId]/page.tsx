@@ -1,5 +1,6 @@
 import { adminListingDetail, safeHttpUrl } from '@one/shared'
 import { partnerApiGet } from '@/lib/api'
+import { AdminMediaGrid } from './AdminMediaGrid'
 import { ChangesList } from './ChangesList'
 import { LiftSuspension, LooksFine, SuspendForm } from './ModerationActions'
 import { ReviewActions } from './ReviewActions'
@@ -98,6 +99,11 @@ export default async function ReviewListingPage({
         {listing.about ? <Row label="About">{listing.about}</Row> : null}
       </dl>
 
+      <section className="space-y-2">
+        <h2 className="text-lg font-semibold">Logo and photos</h2>
+        <AdminMediaGrid listingId={listing.id} media={listing.media} />
+      </section>
+
       {listing.status === 'PENDING_REVIEW' ? (
         <ReviewActions listingId={listing.id} approveLabel={approveLabel} />
       ) : null}
@@ -107,7 +113,7 @@ export default async function ReviewListingPage({
           {listing.changes.length > 0 && listing.changedSinceReviewAt ? (
             <section className="space-y-3">
               <h2 className="text-lg font-semibold">Changed since approval</h2>
-              <ChangesList changes={listing.changes} />
+              <ChangesList changes={listing.changes} media={listing.media} />
               <LooksFine
                 listingId={listing.id}
                 changedSinceReviewAt={listing.changedSinceReviewAt}
