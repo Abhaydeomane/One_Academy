@@ -1,8 +1,12 @@
 import { adminListingDetail, safeHttpUrl } from '@one/shared'
 import { partnerApiGet } from '@/lib/api'
+import { ChangesList } from './ChangesList'
+import { LiftSuspension, LooksFine, SuspendForm } from './ModerationActions'
 import { ReviewActions } from './ReviewActions'
 
-export const metadata = { title: 'Review listing' }
+export const metadata = { title: 'Listing' }
+
+const DATE = new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium' })
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -18,10 +22,13 @@ const LINK_FOCUS =
 
 export default async function ReviewListingPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ listingId: string }>
+  searchParams: Promise<{ stale?: string }>
 }) {
   const { listingId } = await params
+  const { stale } = await searchParams
   const listing = await partnerApiGet(`/api/v1/admin/listings/${listingId}`, adminListingDetail)
   const approveLabel = listing.newInstitute
     ? `Approve & publish (also verifies ${listing.organizationName})`
@@ -33,6 +40,16 @@ export default async function ReviewListingPage({
       <p className="text-sm text-gray-600">
         Status: {listing.status.replaceAll('_', ' ').toLowerCase()}
       </p>
+      {stale ? (
+        <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+          This listing changed — reload. The changes below are the latest.
+        </p>
+      ) : null}
+      {listing.status === 'PENDING_REVIEW' && listing.suspensionReason ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+          Previously suspended: {listing.suspensionReason}
+        </p>
+      ) : null}
       {listing.rejectionReason ? (
         <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
           Previously rejected: {listing.rejectionReason}
@@ -83,11 +100,34 @@ export default async function ReviewListingPage({
 
       {listing.status === 'PENDING_REVIEW' ? (
         <ReviewActions listingId={listing.id} approveLabel={approveLabel} />
-      ) : (
-        <p className="rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-600">
-          This listing is not waiting for review.
-        </p>
-      )}
+      ) : null}
+
+      {listing.status === 'PUBLISHED' ? (
+        <div className="space-y-5">
+          {listing.changes.length > 0 && listing.changedSinceReviewAt ? (
+            <section className="space-y-3">
+              <h2 className="text-lg font-semibold">Changed since approval</h2>
+              <ChangesList changes={listing.changes} />
+              <LooksFine
+                listingId={listing.id}
+                changedSinceReviewAt={listing.changedSinceReviewAt}
+              />
+            </section>
+          ) : null}
+          <SuspendForm listingId={listing.id} listingName={listing.name} />
+        </div>
+      ) : null}
+
+      {listing.status === 'SUSPENDED' ? (
+        <div className="space-y-3">
+          <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm">
+            Suspended
+            {listing.suspendedAt ? ` on ${DATE.format(new Date(listing.suspendedAt))}` : ''}:{' '}
+            {listing.suspensionReason ?? 'no reason recorded'}
+          </p>
+          <LiftSuspension listingId={listing.id} />
+        </div>
+      ) : null}
     </section>
   )
 }
