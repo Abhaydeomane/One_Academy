@@ -23,6 +23,8 @@ export const adminListingSummary = z.object({
   submittedAt: z.iso.datetime().nullable(),
   updatedAt: z.iso.datetime(),
   suspensionReason: z.string().nullable(),
+  /// In review, and was public before: a suspended institute asking to return.
+  resubmittedAfterSuspension: z.boolean(),
 })
 export type AdminListingSummary = z.infer<typeof adminListingSummary>
 

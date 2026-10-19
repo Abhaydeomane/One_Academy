@@ -55,16 +55,42 @@ export async function changeSlug(listingId: string, nextSlug: string) {
   await repo.updateSlug(listingId, nextSlug)
 }
 
+/// A listing leaving review unpublished goes back to where it came from. One
+/// that was ever public can only have come from SUSPENDED, so no column is
+/// needed to remember it — and returning it to DRAFT would make it look
+/// never-public to every check that reads status.
+export function returnStatusFor(listing: { firstPublishedAt: Date | null }): repo.ReturnStatus {
+  return hasEverBeenPublished(listing) ? 'SUSPENDED' : 'DRAFT'
+}
+
+/// A DRAFT, or a SUSPENDED listing whose partner has fixed it (BR-016).
 export async function submitForReview(listingId: string) {
   const listing = await repo.findById(listingId)
   if (!listing) throw new NotFoundError('Listing not found')
-  if (listing.status !== 'DRAFT') {
+  if (listing.status !== 'DRAFT' && listing.status !== 'SUSPENDED') {
     throw new ConflictError(
       'INVALID_STATUS_TRANSITION',
-      `Only a DRAFT listing can be submitted; this listing is ${listing.status}`,
+      `Only a DRAFT or SUSPENDED listing can be submitted; this listing is ${listing.status}`,
     )
   }
-  await repo.markSubmitted(listingId)
+  if ((await repo.markSubmitted(listingId, listing.status)) === 0) {
+    throw new ConflictError('INVALID_STATUS_TRANSITION', 'This listing changed; reload and retry')
+  }
+}
+
+/// BR-017: the only way to edit a listing in review is to take it out.
+export async function withdrawFromReview(listingId: string) {
+  const listing = await repo.findById(listingId)
+  if (!listing) throw new NotFoundError('Listing not found')
+  if (listing.status !== 'PENDING_REVIEW') {
+    throw new ConflictError(
+      'INVALID_STATUS_TRANSITION',
+      `Only a listing in review can be withdrawn; this listing is ${listing.status}`,
+    )
+  }
+  if ((await repo.markWithdrawn(listingId, returnStatusFor(listing))) === 0) {
+    throw new ConflictError('INVALID_STATUS_TRANSITION', 'This listing was already reviewed')
+  }
 }
 
 export async function publish(listingId: string, verifierClerkUserId: string) {
@@ -110,6 +136,7 @@ function toAdminSummary(row: repo.ModerationRow | repo.ModerationDetailRow): Adm
     submittedAt: row.submittedAt ? row.submittedAt.toISOString() : null,
     updatedAt: row.updatedAt.toISOString(),
     suspensionReason: row.suspensionReason,
+    resubmittedAfterSuspension: row.status === 'PENDING_REVIEW' && row.firstPublishedAt !== null,
   }
 }
 
@@ -152,7 +179,7 @@ export async function publishAsAdmin(
 }
 
 /// BR-014: only a listing waiting for review can be rejected, and it goes
-/// back to DRAFT so the partner can fix it.
+/// back to DRAFT (or SUSPENDED, if it was ever public) so the partner can fix it.
 export async function rejectAsAdmin(
   listingId: string,
   reason: string,
@@ -165,7 +192,7 @@ export async function rejectAsAdmin(
       `Only a listing waiting for review can be rejected; this listing is ${listing.status}`,
     )
   }
-  if ((await repo.markRejected(listingId, reason)) === 0) {
+  if ((await repo.markRejected(listingId, reason, returnStatusFor(listing))) === 0) {
     throw new ConflictError(
       'INVALID_STATUS_TRANSITION',
       'This listing was decided by another admin; reload and retry',

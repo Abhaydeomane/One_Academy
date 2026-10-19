@@ -203,7 +203,7 @@ registry.registerPath({
 registry.registerPath({
   method: 'post',
   path: '/api/v1/partner/listings/{listingId}/submit',
-  summary: 'Submit a draft listing for review',
+  summary: 'Submit a draft or suspended listing for review',
   security: secured,
   request: { params: z.object({ listingId: z.string() }) },
   responses: {
@@ -211,8 +211,23 @@ registry.registerPath({
     401: UNAUTHENTICATED,
     403: FORBIDDEN,
     409: err(
-      'INVALID_STATUS_TRANSITION (not a draft) or LISTING_INCOMPLETE (missing verification details)',
+      'INVALID_STATUS_TRANSITION (not a draft or suspended) or LISTING_INCOMPLETE (missing verification details)',
     ),
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/partner/listings/{listingId}/withdraw',
+  summary: 'Take a listing out of review so it can be edited',
+  description: 'Returns it to SUSPENDED if it was ever published, otherwise DRAFT (BR-017).',
+  security: secured,
+  request: { params: z.object({ listingId: z.string() }) },
+  responses: {
+    200: { description: 'Withdrawn', ...json(partnerListingDetail) },
+    401: UNAUTHENTICATED,
+    403: FORBIDDEN,
+    409: err('INVALID_STATUS_TRANSITION (not in review)'),
   },
 })
 

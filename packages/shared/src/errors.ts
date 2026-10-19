@@ -19,6 +19,7 @@ export const ERROR_CODES = [
   'LISTING_INCOMPLETE',
   'CITY_IMMUTABLE',
   'UPSTREAM_UNAVAILABLE',
+  'LISTING_UNDER_REVIEW',
 ] as const
 
 export type ErrorCode = (typeof ERROR_CODES)[number]

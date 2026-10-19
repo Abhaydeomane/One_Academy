@@ -70,6 +70,16 @@ partnerInstitutesRouter.post(
   },
 )
 
+partnerInstitutesRouter.post(
+  '/:listingId/withdraw',
+  validate({ params: listingIdParam }),
+  async (req, res) => {
+    const { listingId } = validated<ListingIdParam>(req, 'params')
+    const organizationId = await institutes.resolveOrganizationId(currentOrgId(req))
+    res.json(await institutes.withdrawForOrg(listingId, organizationId))
+  },
+)
+
 /// Mounted at /api/v1/partner/reference. It lives in this module because
 /// cities and exam tags are institute reference data.
 export const partnerReferenceRouter = Router()

@@ -56,6 +56,7 @@ export type ModerationRow = {
   address: string | null
   contactPhone: string | null
   suspensionReason: string | null
+  firstPublishedAt: Date | null
   organization: { name: string; verifiedAt: Date | null }
   city: { name: string }
   instituteProfile: { website: string | null } | null
@@ -71,6 +72,7 @@ const MODERATION_SELECT = {
   address: true,
   contactPhone: true,
   suspensionReason: true,
+  firstPublishedAt: true,
   organization: { select: { name: true, verifiedAt: true } },
   city: { select: { name: true } },
   instituteProfile: { select: { website: true } },
@@ -81,7 +83,6 @@ export type ModerationDetailRow = Omit<ModerationRow, 'instituteProfile'> & {
   shortDescription: string | null
   rejectionReason: string | null
   suspendedAt: Date | null
-  firstPublishedAt: Date | null
   instituteProfile: { website: string | null; about: string | null; modes: Mode[] } | null
   tags: { tag: { slug: string; kind: 'EXAM' | 'AMENITY' | 'FACILITY' } }[]
   _count: { batches: number }
@@ -93,7 +94,6 @@ const MODERATION_DETAIL_SELECT = {
   shortDescription: true,
   rejectionReason: true,
   suspendedAt: true,
-  firstPublishedAt: true,
   instituteProfile: { select: { website: true, about: true, modes: true } },
   tags: { select: { tag: { select: { slug: true, kind: true } } } },
   _count: { select: { batches: true } },
@@ -121,11 +121,26 @@ export async function findModerationRow(id: string): Promise<ModerationRow | nul
   return prisma.listing.findUnique({ where: { id }, select: MODERATION_SELECT })
 }
 
-export async function markSubmitted(id: string): Promise<void> {
-  await prisma.listing.update({
-    where: { id },
+/// Where a listing goes when it leaves review without being published.
+export type ReturnStatus = 'DRAFT' | 'SUSPENDED'
+
+/// Conditional on the status the caller saw, so a submit racing another
+/// transition changes nothing. Returns the rows changed.
+export async function markSubmitted(id: string, from: ReturnStatus): Promise<number> {
+  const result = await prisma.listing.updateMany({
+    where: { id, status: from },
     data: { status: 'PENDING_REVIEW', submittedAt: new Date(), rejectionReason: null },
   })
+  return result.count
+}
+
+/// BR-017: the partner takes a listing out of review to edit it.
+export async function markWithdrawn(id: string, returnTo: ReturnStatus): Promise<number> {
+  const result = await prisma.listing.updateMany({
+    where: { id, status: 'PENDING_REVIEW' },
+    data: { status: returnTo },
+  })
+  return result.count
 }
 
 export async function findModerationDetail(id: string): Promise<ModerationDetailRow | null> {
@@ -134,10 +149,14 @@ export async function findModerationDetail(id: string): Promise<ModerationDetail
 
 /// Conditional on PENDING_REVIEW so two concurrent admin decisions cannot both
 /// win. Returns the number of rows changed (0 means someone else decided first).
-export async function markRejected(id: string, reason: string): Promise<number> {
+export async function markRejected(
+  id: string,
+  reason: string,
+  returnTo: ReturnStatus,
+): Promise<number> {
   const result = await prisma.listing.updateMany({
     where: { id, status: 'PENDING_REVIEW' },
-    data: { status: 'DRAFT', rejectionReason: reason },
+    data: { status: returnTo, rejectionReason: reason },
   })
   return result.count
 }

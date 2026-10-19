@@ -42,7 +42,8 @@
                   "INVALID_STATUS_TRANSITION",
                   "LISTING_INCOMPLETE",
                   "CITY_IMMUTABLE",
-                  "UPSTREAM_UNAVAILABLE"
+                  "UPSTREAM_UNAVAILABLE",
+                  "LISTING_UNDER_REVIEW"
                 ]
               },
               "message": {
@@ -2742,7 +2743,7 @@
     },
     "/api/v1/partner/listings/{listingId}/submit": {
       "post": {
-        "summary": "Submit a draft listing for review",
+        "summary": "Submit a draft or suspended listing for review",
         "security": [
           {
             "bearerAuth": []
@@ -2981,7 +2982,261 @@
             }
           },
           "409": {
-            "description": "INVALID_STATUS_TRANSITION (not a draft) or LISTING_INCOMPLETE (missing verification details)",
+            "description": "INVALID_STATUS_TRANSITION (not a draft or suspended) or LISTING_INCOMPLETE (missing verification details)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/partner/listings/{listingId}/withdraw": {
+      "post": {
+        "summary": "Take a listing out of review so it can be edited",
+        "description": "Returns it to SUSPENDED if it was ever published, otherwise DRAFT (BR-017).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "listingId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Withdrawn",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "DRAFT",
+                        "PENDING_REVIEW",
+                        "PUBLISHED",
+                        "SUSPENDED"
+                      ]
+                    },
+                    "cityName": {
+                      "type": "string"
+                    },
+                    "batchCount": {
+                      "type": "integer"
+                    },
+                    "rejectionReason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "suspensionReason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "citySlug": {
+                      "type": "string"
+                    },
+                    "locality": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "address": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "contactPhone": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "exams": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "shortDescription": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "about": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "website": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "firstPublishedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "batches": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "exam": {
+                            "type": "string"
+                          },
+                          "mode": {
+                            "type": "string",
+                            "enum": [
+                              "ONLINE",
+                              "OFFLINE",
+                              "HYBRID"
+                            ]
+                          },
+                          "startDate": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "endDate": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          },
+                          "scheduleText": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "seatsTotal": {
+                            "type": "integer"
+                          },
+                          "seatsAvailable": {
+                            "type": "integer"
+                          },
+                          "feeAmount": {
+                            "type": "integer"
+                          },
+                          "feeCurrency": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "DRAFT",
+                              "PUBLISHED",
+                              "ARCHIVED"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "title",
+                          "exam",
+                          "mode",
+                          "startDate",
+                          "endDate",
+                          "scheduleText",
+                          "seatsTotal",
+                          "seatsAvailable",
+                          "feeAmount",
+                          "feeCurrency",
+                          "status"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "slug",
+                    "name",
+                    "status",
+                    "cityName",
+                    "batchCount",
+                    "rejectionReason",
+                    "suspensionReason",
+                    "updatedAt",
+                    "citySlug",
+                    "locality",
+                    "address",
+                    "contactPhone",
+                    "exams",
+                    "shortDescription",
+                    "about",
+                    "website",
+                    "firstPublishedAt",
+                    "batches"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not permitted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "INVALID_STATUS_TRANSITION (not in review)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3201,6 +3456,9 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "resubmittedAfterSuspension": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -3216,7 +3474,8 @@
                           "website",
                           "submittedAt",
                           "updatedAt",
-                          "suspensionReason"
+                          "suspensionReason",
+                          "resubmittedAfterSuspension"
                         ]
                       }
                     },
@@ -3365,6 +3624,9 @@
                         "string",
                         "null"
                       ]
+                    },
+                    "resubmittedAfterSuspension": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -3380,7 +3642,8 @@
                     "website",
                     "submittedAt",
                     "updatedAt",
-                    "suspensionReason"
+                    "suspensionReason",
+                    "resubmittedAfterSuspension"
                   ]
                 }
               }
@@ -3517,6 +3780,9 @@
                         "null"
                       ]
                     },
+                    "resubmittedAfterSuspension": {
+                      "type": "boolean"
+                    },
                     "locality": {
                       "type": [
                         "string",
@@ -3590,6 +3856,7 @@
                     "submittedAt",
                     "updatedAt",
                     "suspensionReason",
+                    "resubmittedAfterSuspension",
                     "locality",
                     "shortDescription",
                     "about",
@@ -3744,6 +4011,9 @@
                         "string",
                         "null"
                       ]
+                    },
+                    "resubmittedAfterSuspension": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -3759,7 +4029,8 @@
                     "website",
                     "submittedAt",
                     "updatedAt",
-                    "suspensionReason"
+                    "suspensionReason",
+                    "resubmittedAfterSuspension"
                   ]
                 }
               }
@@ -3925,6 +4196,9 @@
                         "string",
                         "null"
                       ]
+                    },
+                    "resubmittedAfterSuspension": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -3940,7 +4214,8 @@
                     "website",
                     "submittedAt",
                     "updatedAt",
-                    "suspensionReason"
+                    "suspensionReason",
+                    "resubmittedAfterSuspension"
                   ]
                 }
               }
@@ -4087,6 +4362,9 @@
                         "string",
                         "null"
                       ]
+                    },
+                    "resubmittedAfterSuspension": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -4102,7 +4380,8 @@
                     "website",
                     "submittedAt",
                     "updatedAt",
-                    "suspensionReason"
+                    "suspensionReason",
+                    "resubmittedAfterSuspension"
                   ]
                 }
               }

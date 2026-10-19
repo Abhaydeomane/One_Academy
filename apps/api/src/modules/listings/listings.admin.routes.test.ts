@@ -457,3 +457,61 @@ describe('POST /api/v1/admin/listings/:listingId/reinstate (BR-016)', () => {
     expect(results.map((res) => res.status).sort()).toEqual([200, 409])
   })
 })
+
+describe('Resubmissions after suspension (BR-016)', () => {
+  const resubmitted = () =>
+    prisma.listing.update({
+      where: { id: seed.publishedListingId },
+      data: { status: 'PENDING_REVIEW', suspensionReason: 'Address could not be verified' },
+    })
+  const reason = { reason: 'The new address still does not match.' }
+
+  it('rejecting a resubmission returns it to SUSPENDED', async () => {
+    await resubmitted()
+    const res = await testApp()
+      .post(`/api/v1/admin/listings/${seed.publishedListingId}/reject`)
+      .set('x-test-auth', asAdmin)
+      .send(reason)
+    expect(res.status).toBe(200)
+    const row = await prisma.listing.findUniqueOrThrow({ where: { id: seed.publishedListingId } })
+    expect(row.status).toBe('SUSPENDED')
+    expect(row.rejectionReason).toBe(reason.reason)
+  })
+
+  it('rejecting a first submission still returns it to DRAFT', async () => {
+    await prisma.listing.update({
+      where: { id: seed.draftListingId },
+      data: { status: 'PENDING_REVIEW' },
+    })
+    await testApp()
+      .post(`/api/v1/admin/listings/${seed.draftListingId}/reject`)
+      .set('x-test-auth', asAdmin)
+      .send(reason)
+    const row = await prisma.listing.findUniqueOrThrow({ where: { id: seed.draftListingId } })
+    expect(row.status).toBe('DRAFT')
+  })
+
+  it('publishing a resubmission clears the suspension', async () => {
+    await resubmitted()
+    const res = await testApp()
+      .post(`/api/v1/admin/listings/${seed.publishedListingId}/publish`)
+      .set('x-test-auth', asAdmin)
+    expect(res.status).toBe(200)
+    const row = await prisma.listing.findUniqueOrThrow({ where: { id: seed.publishedListingId } })
+    expect(row.status).toBe('PUBLISHED')
+    expect(row.suspensionReason).toBeNull()
+  })
+
+  it('flags resubmittedAfterSuspension in the queue', async () => {
+    await resubmitted()
+    await prisma.listing.update({
+      where: { id: seed.draftListingId },
+      data: { status: 'PENDING_REVIEW' },
+    })
+    const res = await testApp().get('/api/v1/admin/listings').set('x-test-auth', asAdmin)
+    const items = adminListingQueueResponse.parse(res.body).items
+    const flag = (id: string) => items.find((item) => item.id === id)?.resubmittedAfterSuspension
+    expect(flag(seed.publishedListingId)).toBe(true)
+    expect(flag(seed.draftListingId)).toBe(false)
+  })
+})

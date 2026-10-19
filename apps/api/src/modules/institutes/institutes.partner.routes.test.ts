@@ -516,3 +516,107 @@ describe('POST /api/v1/partner/listings/:listingId/submit (BR-012)', () => {
     expect(row.submittedAt).not.toBeNull()
   })
 })
+
+describe('Resubmission, withdrawal and the review lock (BR-016, BR-017)', () => {
+  const suspendPublished = (data: Record<string, unknown> = {}) =>
+    prisma.listing.update({
+      where: { id: seed.publishedListingId },
+      data: {
+        status: 'SUSPENDED',
+        suspensionReason: 'Address could not be verified',
+        address: '12 FC Road, Pune 411004',
+        contactPhone: '9000000001',
+        ...data,
+      },
+    })
+  const post = (id: string, action: string, org = 'co_alpha') =>
+    testApp().post(`/api/v1/partner/listings/${id}/${action}`).set('x-test-auth', auth(org))
+
+  it('resubmits a suspended listing into review', async () => {
+    await suspendPublished()
+    const res = await post(seed.publishedListingId, 'submit')
+    expect(res.status).toBe(200)
+    expect(partnerListingDetail.parse(res.body)).toMatchObject({
+      status: 'PENDING_REVIEW',
+      suspensionReason: 'Address could not be verified',
+    })
+  })
+
+  it('applies BR-012 to a suspended listing', async () => {
+    await suspendPublished({ address: null })
+    const res = await post(seed.publishedListingId, 'submit')
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('LISTING_INCOMPLETE')
+    expect(res.body.error.details.missing).toEqual(['address'])
+  })
+
+  it('409s LISTING_UNDER_REVIEW for an edit while in review', async () => {
+    await prisma.listing.update({
+      where: { id: seed.draftListingId },
+      data: { status: 'PENDING_REVIEW' },
+    })
+    const before = await prisma.listing.findUniqueOrThrow({ where: { id: seed.draftListingId } })
+    const res = await testApp()
+      .patch(`/api/v1/partner/listings/${seed.draftListingId}`)
+      .set('x-test-auth', auth('co_alpha'))
+      .send({ shortDescription: 'Changed during review' })
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('LISTING_UNDER_REVIEW')
+    const after = await prisma.listing.findUniqueOrThrow({ where: { id: seed.draftListingId } })
+    expect(after.shortDescription).toBe(before.shortDescription)
+  })
+
+  it('still allows batch creation while in review', async () => {
+    await prisma.listing.update({
+      where: { id: seed.draftListingId },
+      data: { status: 'PENDING_REVIEW' },
+    })
+    const res = await testApp()
+      .post(`/api/v1/partner/listings/${seed.draftListingId}/batches`)
+      .set('x-test-auth', auth('co_alpha'))
+      .send({
+        title: 'JEE 2028',
+        exam: 'JEE',
+        mode: 'OFFLINE',
+        startDate: '2028-04-01',
+        seatsTotal: 30,
+        feeAmount: 10_000_000,
+        feeCurrency: 'INR',
+      })
+    expect(res.status).toBe(201)
+  })
+
+  it('withdraws a never-published listing to DRAFT', async () => {
+    await prisma.listing.update({
+      where: { id: seed.draftListingId },
+      data: { status: 'PENDING_REVIEW' },
+    })
+    const res = await post(seed.draftListingId, 'withdraw')
+    expect(res.status).toBe(200)
+    expect(partnerListingDetail.parse(res.body).status).toBe('DRAFT')
+  })
+
+  it('withdraws a once-published listing to SUSPENDED', async () => {
+    await suspendPublished({ status: 'PENDING_REVIEW' })
+    const res = await post(seed.publishedListingId, 'withdraw')
+    expect(res.status).toBe(200)
+    expect(partnerListingDetail.parse(res.body).status).toBe('SUSPENDED')
+  })
+
+  it('409s a withdraw outside review', async () => {
+    const res = await post(seed.draftListingId, 'withdraw')
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('INVALID_STATUS_TRANSITION')
+  })
+
+  it("403s a withdraw of another organisation's listing", async () => {
+    await prisma.listing.update({
+      where: { id: seed.draftListingId },
+      data: { status: 'PENDING_REVIEW' },
+    })
+    const res = await post(seed.draftListingId, 'withdraw', 'co_beta')
+    expect(res.status).toBe(403)
+    const row = await prisma.listing.findUniqueOrThrow({ where: { id: seed.draftListingId } })
+    expect(row.status).toBe('PENDING_REVIEW')
+  })
+})

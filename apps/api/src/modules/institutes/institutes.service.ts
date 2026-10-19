@@ -25,6 +25,7 @@ import {
   isSlugTaken,
   resolvePublishedSlug,
   submitForReview,
+  withdrawFromReview,
 } from '../listings/listings.service.js'
 import * as repo from './institutes.repository.js'
 
@@ -207,9 +208,10 @@ export async function submitForReviewForOrg(
   organizationId: string,
 ): Promise<PartnerListingDetail> {
   const current = await getForOrg(listingId, organizationId)
-  // A non-draft listing is rejected by the status transition, not the gate.
+  // A listing that cannot be submitted is rejected by the status transition,
+  // not the gate. A suspended listing must be as complete as a draft.
   const missing =
-    current.status !== 'DRAFT'
+    current.status !== 'DRAFT' && current.status !== 'SUSPENDED'
       ? []
       : missingForSubmission({
           name: current.name,
@@ -229,6 +231,15 @@ export async function submitForReviewForOrg(
   return getForOrg(listingId, organizationId)
 }
 
+export async function withdrawForOrg(
+  listingId: string,
+  organizationId: string,
+): Promise<PartnerListingDetail> {
+  await assertOrgOwnsListing(listingId, organizationId)
+  await withdrawFromReview(listingId)
+  return getForOrg(listingId, organizationId)
+}
+
 export async function updateForOrg(
   listingId: string,
   organizationId: string,
@@ -237,6 +248,13 @@ export async function updateForOrg(
   await assertOrgOwnsListing(listingId, organizationId)
   const current = await repo.findByIdForPartner(listingId)
   if (!current) throw new NotFoundError('Listing not found')
+  // BR-017: what the admin approves is exactly what they read.
+  if (current.status === 'PENDING_REVIEW') {
+    throw new ConflictError(
+      'LISTING_UNDER_REVIEW',
+      'A listing cannot be edited while it is being reviewed; withdraw it first',
+    )
+  }
 
   let cityId: string | undefined
   let citySlug = current.city.slug
