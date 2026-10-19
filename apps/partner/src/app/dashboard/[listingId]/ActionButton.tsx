@@ -16,12 +16,15 @@ export function ActionButton({
   pendingLabel,
   hidden,
   variant = 'secondary',
+  confirm,
 }: {
   action: Action
   label: string
   pendingLabel: string
   hidden: Record<string, string>
   variant?: 'primary' | 'secondary'
+  /** Asked before submitting; cancelling sends nothing. */
+  confirm?: string
 }) {
   const [state, formAction, pending] = useActionState(action, INITIAL)
 
@@ -31,7 +34,13 @@ export function ActionButton({
       : 'tap-target w-full rounded-lg border border-brand-500 px-4 text-sm font-medium text-brand-700 sm:w-auto'
 
   return (
-    <form action={formAction} className="space-y-2">
+    <form
+      action={formAction}
+      onSubmit={(event) => {
+        if (confirm && !window.confirm(confirm)) event.preventDefault()
+      }}
+      className="space-y-2"
+    >
       {Object.entries(hidden).map(([name, value]) => (
         <input key={name} type="hidden" name={name} value={value} />
       ))}

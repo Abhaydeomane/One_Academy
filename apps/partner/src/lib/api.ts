@@ -88,6 +88,10 @@ export function partnerErrorMessage(error: unknown): string {
       return "A published listing's city cannot be changed."
     case 'UPSTREAM_UNAVAILABLE':
       return "We couldn't set up your institute. Please try again."
+    case 'LISTING_UNDER_REVIEW':
+      return 'Withdraw your listing from review before making changes.'
+    case 'REVIEW_STALE':
+      return 'This listing changed — reload'
     case 'VALIDATION_FAILED':
       return 'Please check the values you entered.'
     default:

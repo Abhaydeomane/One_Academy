@@ -10,7 +10,7 @@ import {
   partnerListingDetail,
   updateListingBody,
 } from '@one/shared'
-import { partnerApiSend, partnerErrorMessage } from '@/lib/api'
+import { PartnerApiError, partnerApiSend, partnerErrorMessage } from '@/lib/api'
 
 export type ActionState = {
   status: 'idle' | 'success' | 'error'
@@ -107,6 +107,31 @@ export async function submitListingAction(
     revalidatePath(`/dashboard/${listingId}`)
     return { status: 'success', message: 'Submitted for review.' }
   } catch (error) {
+    return { status: 'error', message: partnerErrorMessage(error) }
+  }
+}
+
+/// BR-017: the only way to edit a listing in review is to take it out first.
+export async function withdrawListingAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const listingId = String(formData.get('listingId') ?? '')
+
+  try {
+    await partnerApiSend(
+      `/api/v1/partner/listings/${listingId}/withdraw`,
+      'POST',
+      {},
+      partnerListingDetail,
+    )
+    revalidatePath(`/dashboard/${listingId}`)
+    return { status: 'success', message: 'Withdrawn. You can edit your listing now.' }
+  } catch (error) {
+    revalidatePath(`/dashboard/${listingId}`)
+    if (error instanceof PartnerApiError && error.status === 409) {
+      return { status: 'error', message: 'This listing is no longer in review.' }
+    }
     return { status: 'error', message: partnerErrorMessage(error) }
   }
 }
