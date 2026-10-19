@@ -36,6 +36,11 @@ catalog:
   '@asteasolutions/zod-to-openapi': 9.1.0
   express-rate-limit: 8.7.1
   '@playwright/test': 1.64.0
+  # P2c media upload (ADR 0019). sharp matches the version Next already installs.
+  multer: 2.4.0
+  '@types/multer': 2.3.0
+  sharp: 0.35.5
+  '@aws-sdk/client-s3': 3.1146.0
 
 # pnpm 12 blocks post-install scripts by default and records approvals here as
 # `allowBuilds` (not `onlyBuiltDependencies`, which earlier versions used).

@@ -45,6 +45,19 @@ export function createServer(): Express {
     next()
   })
 
+  // Local media (STORAGE_DRIVER=fs). Keys are never reused, so cache forever.
+  if (config.storage.driver === 'fs') {
+    app.use(
+      '/media',
+      express.static(config.storage.fsRoot, {
+        immutable: true,
+        maxAge: '1y',
+        fallthrough: false,
+        dotfiles: 'deny',
+      }),
+    )
+  }
+
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' })
   })

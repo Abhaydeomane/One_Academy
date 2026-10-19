@@ -67,6 +67,11 @@ enum MediaKind {
   BROCHURE
 }
 
+enum MediaPurpose {
+  LOGO
+  PHOTO
+}
+
 enum TagKind {
   EXAM
   AMENITY
@@ -210,13 +215,21 @@ model ListingRedirect {
   @@index([listingId])
 }
 
+/// A logo or photo (P2c). Stores the key of its variants, never a URL, so the
+/// storage provider can change by configuration (ADR 0019). At most one LOGO
+/// per listing, by a partial unique index in the media_assets migration.
 model MediaAsset {
-  id        String    @id @default(cuid(2))
-  listingId String
-  kind      MediaKind @default(IMAGE)
-  url       String
-  alt       String?
-  sortOrder Int       @default(0)
+  id         String       @id @default(cuid(2))
+  listingId  String
+  kind       MediaKind    @default(IMAGE)
+  purpose    MediaPurpose @default(PHOTO)
+  storageKey String       @unique
+  /// Dimensions of the largest variant, so pages can reserve space.
+  width      Int
+  height     Int
+  alt        String?
+  sortOrder  Int          @default(0)
+  createdAt  DateTime     @default(now())
 
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 

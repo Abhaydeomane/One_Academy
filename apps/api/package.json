@@ -12,12 +12,15 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "catalog:",
     "@clerk/express": "catalog:",
     "@one/db": "workspace:*",
     "@one/shared": "workspace:*",
     "express": "catalog:",
     "express-rate-limit": "catalog:",
+    "multer": "catalog:",
     "pino": "catalog:",
+    "sharp": "catalog:",
     "svix": "2.8.0",
     "zod": "catalog:"
   },
@@ -25,6 +28,7 @@
     "@one/config": "workspace:*",
     "@types/express": "catalog:",
     "@types/express-serve-static-core": "catalog:",
+    "@types/multer": "catalog:",
     "@types/node": "catalog:",
     "@types/supertest": "catalog:",
     "pino-pretty": "catalog:",

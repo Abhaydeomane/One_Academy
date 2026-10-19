@@ -21,7 +21,6 @@ export type InstituteRow = {
     facultyCount: number | null
   } | null
   tags: { tag: { slug: string; kind: 'EXAM' | 'AMENITY' | 'FACILITY' } }[]
-  media: { url: string; alt: string | null }[]
 }
 
 const SELECT = {
@@ -45,7 +44,6 @@ const SELECT = {
     },
   },
   tags: { select: { tag: { select: { slug: true, kind: true } } } },
-  media: { select: { url: true, alt: true }, orderBy: { sortOrder: 'asc' as const } },
 } as const
 
 export type ListFilters = {

@@ -67,7 +67,8 @@ function toDetail(row: repo.InstituteRow, fees: FeeSummary): InstituteDetail {
     website: row.instituteProfile?.website ?? null,
     establishedYear: row.instituteProfile?.establishedYear ?? null,
     facultyCount: row.instituteProfile?.facultyCount ?? null,
-    media: row.media,
+    // Replaced by logo and photos in P2c Task 5.
+    media: [],
     publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
   }
 }
