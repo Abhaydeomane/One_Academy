@@ -36,7 +36,7 @@ export function createServer(): Express {
     if (origin && config.corsOrigins.includes(origin)) {
       res.setHeader('access-control-allow-origin', origin)
       res.setHeader('access-control-allow-headers', 'content-type,authorization')
-      res.setHeader('access-control-allow-methods', 'GET,POST,PATCH,OPTIONS')
+      res.setHeader('access-control-allow-methods', 'GET,POST,PATCH,PUT,DELETE,OPTIONS')
       res.setHeader('vary', 'origin')
     }
     if (req.method === 'OPTIONS') {

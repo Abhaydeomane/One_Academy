@@ -30,6 +30,8 @@ import {
   partnerReferenceResponse,
   markReviewedBody,
   mediaAsset,
+  reorderMediaBody,
+  updateMediaBody,
   rejectListingBody,
   suspendListingBody,
   updateBatchBody,
@@ -250,6 +252,54 @@ registry.registerPath({
     404: NOT_FOUND,
     409: err('MEDIA_LIMIT_REACHED or LISTING_UNDER_REVIEW'),
     503: err('UPSTREAM_UNAVAILABLE (storage)'),
+  },
+})
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/partner/media/{assetId}',
+  summary: "Change a photo's alt text",
+  security: secured,
+  request: { params: z.object({ assetId: z.string() }), body: json(updateMediaBody) },
+  responses: {
+    200: { description: 'Updated', ...json(mediaAsset) },
+    400: BAD_REQUEST,
+    401: UNAUTHENTICATED,
+    403: FORBIDDEN,
+    404: NOT_FOUND,
+    409: err('LISTING_UNDER_REVIEW'),
+  },
+})
+
+registry.registerPath({
+  method: 'put',
+  path: '/api/v1/partner/listings/{listingId}/media/order',
+  summary: "Set the listing's photo order",
+  description: 'Every photo id of the listing exactly once; otherwise 400.',
+  security: secured,
+  request: { params: z.object({ listingId: z.string() }), body: json(reorderMediaBody) },
+  responses: {
+    200: { description: 'Media in the new order', ...json(z.array(mediaAsset)) },
+    400: BAD_REQUEST,
+    401: UNAUTHENTICATED,
+    403: FORBIDDEN,
+    404: NOT_FOUND,
+    409: err('LISTING_UNDER_REVIEW'),
+  },
+})
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/partner/media/{assetId}',
+  summary: 'Delete a logo or photo',
+  security: secured,
+  request: { params: z.object({ assetId: z.string() }) },
+  responses: {
+    204: { description: 'Deleted' },
+    401: UNAUTHENTICATED,
+    403: FORBIDDEN,
+    404: NOT_FOUND,
+    409: err('LISTING_UNDER_REVIEW'),
   },
 })
 

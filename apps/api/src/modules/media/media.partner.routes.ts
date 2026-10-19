@@ -1,8 +1,14 @@
 import { Router } from 'express'
 import {
   listingIdParam,
+  mediaIdParam,
+  reorderMediaBody,
+  updateMediaBody,
   uploadMediaFields,
   type ListingIdParam,
+  type MediaIdParam,
+  type ReorderMediaBody,
+  type UpdateMediaBody,
   type UploadMediaFields,
 } from '@one/shared'
 import { currentOrgId, requireAuth, requireOrg } from '../../middleware/auth.js'
@@ -31,5 +37,38 @@ partnerMediaRouter.post(
         ...(alt === undefined ? {} : { alt }),
       }),
     )
+  },
+)
+
+partnerMediaRouter.patch(
+  '/media/:assetId',
+  validate({ params: mediaIdParam, body: updateMediaBody }),
+  async (req, res) => {
+    const { assetId } = validated<MediaIdParam>(req, 'params')
+    const { alt } = validated<UpdateMediaBody>(req, 'body')
+    const organizationId = await media.resolveOrganizationId(currentOrgId(req))
+    res.json(await media.updateAltForOrg(assetId, organizationId, alt))
+  },
+)
+
+partnerMediaRouter.put(
+  '/listings/:listingId/media/order',
+  validate({ params: listingIdParam, body: reorderMediaBody }),
+  async (req, res) => {
+    const { listingId } = validated<ListingIdParam>(req, 'params')
+    const { assetIds } = validated<ReorderMediaBody>(req, 'body')
+    const organizationId = await media.resolveOrganizationId(currentOrgId(req))
+    res.json(await media.reorderForOrg(listingId, organizationId, assetIds))
+  },
+)
+
+partnerMediaRouter.delete(
+  '/media/:assetId',
+  validate({ params: mediaIdParam }),
+  async (req, res) => {
+    const { assetId } = validated<MediaIdParam>(req, 'params')
+    const organizationId = await media.resolveOrganizationId(currentOrgId(req))
+    await media.deleteForOrg(assetId, organizationId)
+    res.status(204).end()
   },
 )

@@ -189,3 +189,115 @@ describe('POST /api/v1/partner/listings/:listingId/media (BR-019, BR-020)', () =
     expect(detail.media.map((m) => m.purpose)).toEqual(['LOGO', 'PHOTO'])
   })
 })
+
+describe('captions, order and delete', () => {
+  const photo = async (listingId = seed.draftListingId) =>
+    mediaAsset.parse((await upload(listingId, jpeg)).body)
+  const send = (
+    method: 'patch' | 'put' | 'delete',
+    path: string,
+    body?: object,
+    org = 'co_alpha',
+  ) => {
+    const req = testApp()[method](`/api/v1/partner${path}`).set('x-test-auth', auth(org))
+    return body ? req.send(body) : req
+  }
+  const order = (listingId: string) =>
+    prisma.mediaAsset
+      .findMany({ where: { listingId, purpose: 'PHOTO' }, orderBy: { sortOrder: 'asc' } })
+      .then((rows) => rows.map((r) => r.id))
+
+  it('saves and clears alt text', async () => {
+    const asset = await photo()
+    const saved = await send('patch', `/media/${asset.id}`, { alt: '  Results board  ' })
+    expect(saved.status).toBe(200)
+    expect(mediaAsset.parse(saved.body).alt).toBe('Results board')
+    const cleared = await send('patch', `/media/${asset.id}`, { alt: null })
+    expect(mediaAsset.parse(cleared.body).alt).toBeNull()
+  })
+
+  it('reorders photos', async () => {
+    const [a, b, c] = [await photo(), await photo(), await photo()]
+    const res = await send('put', `/listings/${seed.draftListingId}/media/order`, {
+      assetIds: [c!.id, a!.id, b!.id],
+    })
+    expect(res.status).toBe(200)
+    expect(await order(seed.draftListingId)).toEqual([c!.id, a!.id, b!.id])
+  })
+
+  it('400s an order missing a photo', async () => {
+    const [a, b] = [await photo(), await photo()]
+    const res = await send('put', `/listings/${seed.draftListingId}/media/order`, {
+      assetIds: [b!.id],
+    })
+    expect(res.status).toBe(400)
+    expect(await order(seed.draftListingId)).toEqual([a!.id, b!.id])
+  })
+
+  it('400s an order repeating a photo', async () => {
+    const [a, b] = [await photo(), await photo()]
+    const res = await send('put', `/listings/${seed.draftListingId}/media/order`, {
+      assetIds: [a!.id, a!.id],
+    })
+    expect(res.status).toBe(400)
+    expect(await order(seed.draftListingId)).toEqual([a!.id, b!.id])
+  })
+
+  it("400s an order containing another listing's photo", async () => {
+    const [a, b] = [await photo(), await photo()]
+    const foreign = await photo(seed.publishedListingId)
+    const res = await send('put', `/listings/${seed.draftListingId}/media/order`, {
+      assetIds: [b!.id, foreign.id],
+    })
+    expect(res.status).toBe(400)
+    expect(await order(seed.draftListingId)).toEqual([a!.id, b!.id])
+  })
+
+  it('deletes a photo and its objects (204)', async () => {
+    const asset = await photo()
+    const res = await send('delete', `/media/${asset.id}`)
+    expect(res.status).toBe(204)
+    expect(await prisma.mediaAsset.count({ where: { id: asset.id } })).toBe(0)
+    expect(await filesUnder(seed.draftListingId)).toEqual([])
+  })
+
+  it('still deletes the row when object deletion fails', async () => {
+    const asset = await photo()
+    // Make deletion fail for real: a directory where the variant file was.
+    const file = join(root, new URL(asset.thumbUrl!).pathname.replace(/^\/media\//, ''))
+    const { rm, mkdir, writeFile } = await import('node:fs/promises')
+    await rm(file)
+    await mkdir(file)
+    await writeFile(join(file, 'blocker'), 'x')
+    const res = await send('delete', `/media/${asset.id}`)
+    expect(res.status).toBe(204)
+    expect(await prisma.mediaAsset.count({ where: { id: asset.id } })).toBe(0)
+  })
+
+  it('404s an unknown asset', async () => {
+    expect((await send('patch', '/media/nope', { alt: 'x' })).status).toBe(404)
+  })
+
+  it("403s another organisation's asset", async () => {
+    const asset = await photo()
+    expect((await send('delete', `/media/${asset.id}`, undefined, 'co_beta')).status).toBe(403)
+    expect(await prisma.mediaAsset.count({ where: { id: asset.id } })).toBe(1)
+  })
+
+  it.each(['patch', 'put', 'delete'] as const)('409s %s while in review', async (method) => {
+    const asset = await photo()
+    await prisma.listing.update({
+      where: { id: seed.draftListingId },
+      data: { status: 'PENDING_REVIEW' },
+    })
+    const res =
+      method === 'put'
+        ? await send('put', `/listings/${seed.draftListingId}/media/order`, {
+            assetIds: [asset.id],
+          })
+        : await send(method, `/media/${asset.id}`, method === 'patch' ? { alt: 'x' } : undefined)
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('LISTING_UNDER_REVIEW')
+    expect(await prisma.mediaAsset.count({ where: { id: asset.id } })).toBe(1)
+  })
+})

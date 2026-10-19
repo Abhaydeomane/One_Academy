@@ -24,3 +24,14 @@ export type UploadMediaFields = z.infer<typeof uploadMediaFields>
 
 export const mediaIdParam = z.object({ assetId: z.string().min(1) })
 export type MediaIdParam = z.infer<typeof mediaIdParam>
+
+export const updateMediaBody = z.object({
+  alt: z.string().trim().max(MEDIA_LIMITS.altMax).nullable(),
+})
+export type UpdateMediaBody = z.infer<typeof updateMediaBody>
+
+/// Every photo of the listing exactly once, in the new order.
+export const reorderMediaBody = z.object({
+  assetIds: z.array(z.string().min(1)).min(1).max(MEDIA_LIMITS.photos),
+})
+export type ReorderMediaBody = z.infer<typeof reorderMediaBody>

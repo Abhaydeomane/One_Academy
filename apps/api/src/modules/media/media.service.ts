@@ -1,6 +1,12 @@
 import { randomUUID } from 'node:crypto'
 import type { MediaAsset } from '@one/shared'
-import { ConflictError, UpstreamUnavailableError } from '../../lib/errors.js'
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  UpstreamUnavailableError,
+} from '../../lib/errors.js'
 import { logger } from '../../lib/logger.js'
 import { toMediaAsset, variantKeys, type MediaPurpose } from '../../lib/media.js'
 import { deleteObjects, putObject } from '../../lib/storage.js'
@@ -74,4 +80,55 @@ export async function uploadForOrg(
     await discard(written)
     throw error
   }
+}
+
+/// The asset, after checking it belongs to one of the organisation's listings.
+async function ownedAsset(assetId: string, organizationId: string) {
+  const asset = await repo.findById(assetId)
+  if (!asset) throw new NotFoundError('Media not found')
+  try {
+    await assertOrgOwnsListing(asset.listingId, organizationId)
+  } catch (error) {
+    if (error instanceof ForbiddenError)
+      throw new ForbiddenError('Media belongs to another organisation')
+    throw error
+  }
+  return asset
+}
+
+export async function updateAltForOrg(
+  assetId: string,
+  organizationId: string,
+  alt: string | null,
+): Promise<MediaAsset> {
+  const asset = await ownedAsset(assetId, organizationId)
+  const row = await applyPartnerEdit(asset.listingId, () =>
+    repo.updateAltGuarded(assetId, asset.listingId, alt ? alt : null),
+  )
+  return toMediaAsset(row)
+}
+
+export async function reorderForOrg(
+  listingId: string,
+  organizationId: string,
+  assetIds: string[],
+): Promise<MediaAsset[]> {
+  await assertOrgOwnsListing(listingId, organizationId)
+  const rows = await applyPartnerEdit(listingId, async () => {
+    const result = await repo.reorderGuarded(listingId, assetIds)
+    if (result === 'MISMATCH') {
+      throw new BadRequestError('The order must list every photo of this listing exactly once')
+    }
+    return result
+  })
+  return rows.map(toMediaAsset)
+}
+
+/// The row goes first; the files after, best-effort (spec §6).
+export async function deleteForOrg(assetId: string, organizationId: string): Promise<void> {
+  const asset = await ownedAsset(assetId, organizationId)
+  const removed = await applyPartnerEdit(asset.listingId, () =>
+    repo.deleteGuarded(assetId, asset.listingId),
+  )
+  await discard(variantKeys(removed.storageKey, removed.purpose))
 }

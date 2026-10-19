@@ -85,3 +85,74 @@ export async function insertGuarded(
     return { row, replacedKey }
   })
 }
+
+export async function findById(id: string): Promise<(MediaRow & { listingId: string }) | null> {
+  return prisma.mediaAsset.findUnique({
+    where: { id },
+    select: { ...MEDIA_SELECT, listingId: true },
+  })
+}
+
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0]
+
+/// BR-017 for writes that are not uploads: refuses a listing in review and
+/// holds its row lock for the rest of the transaction.
+async function lockEditable(tx: Tx, listingId: string): Promise<boolean> {
+  const guard = await tx.listing.updateMany({
+    where: { id: listingId, status: { not: 'PENDING_REVIEW' } },
+    data: { updatedAt: new Date() },
+  })
+  return guard.count > 0
+}
+
+export async function updateAltGuarded(
+  id: string,
+  listingId: string,
+  alt: string | null,
+): Promise<MediaRow | false> {
+  return prisma.$transaction(async (tx) => {
+    if (!(await lockEditable(tx, listingId))) return false
+    return tx.mediaAsset.update({ where: { id }, data: { alt }, select: MEDIA_SELECT })
+  })
+}
+
+/// 'MISMATCH' unless assetIds is exactly the listing's photos, each once.
+export async function reorderGuarded(
+  listingId: string,
+  assetIds: string[],
+): Promise<MediaRow[] | false | 'MISMATCH'> {
+  return prisma.$transaction(async (tx) => {
+    if (!(await lockEditable(tx, listingId))) return false
+    const photos = await tx.mediaAsset.findMany({
+      where: { listingId, purpose: 'PHOTO' },
+      select: { id: true },
+    })
+    const current = new Set(photos.map((photo) => photo.id))
+    const wanted = new Set(assetIds)
+    if (
+      wanted.size !== assetIds.length ||
+      wanted.size !== current.size ||
+      assetIds.some((id) => !current.has(id))
+    ) {
+      return 'MISMATCH'
+    }
+    for (const [index, id] of assetIds.entries()) {
+      await tx.mediaAsset.update({ where: { id }, data: { sortOrder: index } })
+    }
+    return tx.mediaAsset.findMany({
+      where: { listingId },
+      orderBy: [{ purpose: 'asc' }, { sortOrder: 'asc' }],
+      select: MEDIA_SELECT,
+    })
+  })
+}
+
+export async function deleteGuarded(
+  id: string,
+  listingId: string,
+): Promise<{ storageKey: string; purpose: MediaPurpose } | false> {
+  return prisma.$transaction(async (tx) => {
+    if (!(await lockEditable(tx, listingId))) return false
+    return tx.mediaAsset.delete({ where: { id }, select: { storageKey: true, purpose: true } })
+  })
+}
