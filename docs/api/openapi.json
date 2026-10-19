@@ -43,7 +43,8 @@
                   "LISTING_INCOMPLETE",
                   "CITY_IMMUTABLE",
                   "UPSTREAM_UNAVAILABLE",
-                  "LISTING_UNDER_REVIEW"
+                  "LISTING_UNDER_REVIEW",
+                  "REVIEW_STALE"
                 ]
               },
               "message": {
@@ -3380,6 +3381,24 @@
             "required": false,
             "name": "status",
             "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "changed",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "required": false,
+            "name": "q",
+            "in": "query"
           }
         ],
         "responses": {
@@ -3459,6 +3478,16 @@
                           },
                           "resubmittedAfterSuspension": {
                             "type": "boolean"
+                          },
+                          "changedSinceReviewAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          },
+                          "changedFieldCount": {
+                            "type": "integer"
                           }
                         },
                         "required": [
@@ -3475,7 +3504,9 @@
                           "submittedAt",
                           "updatedAt",
                           "suspensionReason",
-                          "resubmittedAfterSuspension"
+                          "resubmittedAfterSuspension",
+                          "changedSinceReviewAt",
+                          "changedFieldCount"
                         ]
                       }
                     },
@@ -3627,6 +3658,16 @@
                     },
                     "resubmittedAfterSuspension": {
                       "type": "boolean"
+                    },
+                    "changedSinceReviewAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "changedFieldCount": {
+                      "type": "integer"
                     }
                   },
                   "required": [
@@ -3643,7 +3684,9 @@
                     "submittedAt",
                     "updatedAt",
                     "suspensionReason",
-                    "resubmittedAfterSuspension"
+                    "resubmittedAfterSuspension",
+                    "changedSinceReviewAt",
+                    "changedFieldCount"
                   ]
                 }
               }
@@ -3783,6 +3826,16 @@
                     "resubmittedAfterSuspension": {
                       "type": "boolean"
                     },
+                    "changedSinceReviewAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "changedFieldCount": {
+                      "type": "integer"
+                    },
                     "locality": {
                       "type": [
                         "string",
@@ -3840,6 +3893,73 @@
                         "null"
                       ],
                       "format": "date-time"
+                    },
+                    "changes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string",
+                            "enum": [
+                              "name",
+                              "shortDescription",
+                              "locality",
+                              "address",
+                              "contactPhone",
+                              "about",
+                              "website",
+                              "establishedYear",
+                              "facultyCount",
+                              "modes",
+                              "exams"
+                            ]
+                          },
+                          "before": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "after": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "before",
+                          "after"
+                        ]
+                      }
                     }
                   },
                   "required": [
@@ -3857,6 +3977,8 @@
                     "updatedAt",
                     "suspensionReason",
                     "resubmittedAfterSuspension",
+                    "changedSinceReviewAt",
+                    "changedFieldCount",
                     "locality",
                     "shortDescription",
                     "about",
@@ -3865,7 +3987,8 @@
                     "batchCount",
                     "rejectionReason",
                     "suspendedAt",
-                    "firstPublishedAt"
+                    "firstPublishedAt",
+                    "changes"
                   ]
                 }
               }
@@ -4014,6 +4137,16 @@
                     },
                     "resubmittedAfterSuspension": {
                       "type": "boolean"
+                    },
+                    "changedSinceReviewAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "changedFieldCount": {
+                      "type": "integer"
                     }
                   },
                   "required": [
@@ -4030,7 +4163,9 @@
                     "submittedAt",
                     "updatedAt",
                     "suspensionReason",
-                    "resubmittedAfterSuspension"
+                    "resubmittedAfterSuspension",
+                    "changedSinceReviewAt",
+                    "changedFieldCount"
                   ]
                 }
               }
@@ -4199,6 +4334,16 @@
                     },
                     "resubmittedAfterSuspension": {
                       "type": "boolean"
+                    },
+                    "changedSinceReviewAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "changedFieldCount": {
+                      "type": "integer"
                     }
                   },
                   "required": [
@@ -4215,7 +4360,9 @@
                     "submittedAt",
                     "updatedAt",
                     "suspensionReason",
-                    "resubmittedAfterSuspension"
+                    "resubmittedAfterSuspension",
+                    "changedSinceReviewAt",
+                    "changedFieldCount"
                   ]
                 }
               }
@@ -4365,6 +4512,16 @@
                     },
                     "resubmittedAfterSuspension": {
                       "type": "boolean"
+                    },
+                    "changedSinceReviewAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "changedFieldCount": {
+                      "type": "integer"
                     }
                   },
                   "required": [
@@ -4381,7 +4538,9 @@
                     "submittedAt",
                     "updatedAt",
                     "suspensionReason",
-                    "resubmittedAfterSuspension"
+                    "resubmittedAfterSuspension",
+                    "changedSinceReviewAt",
+                    "changedFieldCount"
                   ]
                 }
               }
@@ -4419,6 +4578,202 @@
           },
           "409": {
             "description": "Conflicting state or business rule violation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/listings/{listingId}/mark-reviewed": {
+      "post": {
+        "summary": "Accept a published listing's changes as the new approved baseline",
+        "description": "Body carries the changedSinceReviewAt the admin saw; REVIEW_STALE if the institute edited again since (BR-018).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "listingId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "changedSinceReviewAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": [
+                  "changedSinceReviewAt"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Marked reviewed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "DRAFT",
+                        "PENDING_REVIEW",
+                        "PUBLISHED",
+                        "SUSPENDED"
+                      ]
+                    },
+                    "organizationName": {
+                      "type": "string"
+                    },
+                    "newInstitute": {
+                      "type": "boolean"
+                    },
+                    "cityName": {
+                      "type": "string"
+                    },
+                    "address": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "contactPhone": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "website": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "submittedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "suspensionReason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "resubmittedAfterSuspension": {
+                      "type": "boolean"
+                    },
+                    "changedSinceReviewAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "changedFieldCount": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "slug",
+                    "name",
+                    "status",
+                    "organizationName",
+                    "newInstitute",
+                    "cityName",
+                    "address",
+                    "contactPhone",
+                    "website",
+                    "submittedAt",
+                    "updatedAt",
+                    "suspensionReason",
+                    "resubmittedAfterSuspension",
+                    "changedSinceReviewAt",
+                    "changedFieldCount"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not permitted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "INVALID_STATUS_TRANSITION (not published) or REVIEW_STALE (changed again)",
             "content": {
               "application/json": {
                 "schema": {

@@ -27,6 +27,7 @@ import {
   partnerListingDetail,
   partnerListingListResponse,
   partnerReferenceResponse,
+  markReviewedBody,
   rejectListingBody,
   suspendListingBody,
   updateBatchBody,
@@ -338,6 +339,24 @@ registry.registerPath({
     403: FORBIDDEN,
     404: NOT_FOUND,
     409: CONFLICT,
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/admin/listings/{listingId}/mark-reviewed',
+  summary: "Accept a published listing's changes as the new approved baseline",
+  description:
+    'Body carries the changedSinceReviewAt the admin saw; REVIEW_STALE if the institute edited again since (BR-018).',
+  security: secured,
+  request: { params: z.object({ listingId: z.string() }), body: json(markReviewedBody) },
+  responses: {
+    200: { description: 'Marked reviewed', ...json(adminListingSummary) },
+    400: BAD_REQUEST,
+    401: UNAUTHENTICATED,
+    403: FORBIDDEN,
+    404: NOT_FOUND,
+    409: err('INVALID_STATUS_TRANSITION (not published) or REVIEW_STALE (changed again)'),
   },
 })
 

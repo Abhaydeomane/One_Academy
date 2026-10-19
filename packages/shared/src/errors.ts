@@ -20,6 +20,7 @@ export const ERROR_CODES = [
   'CITY_IMMUTABLE',
   'UPSTREAM_UNAVAILABLE',
   'LISTING_UNDER_REVIEW',
+  'REVIEW_STALE',
 ] as const
 
 export type ErrorCode = (typeof ERROR_CODES)[number]

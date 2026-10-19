@@ -2,10 +2,12 @@ import { Router } from 'express'
 import {
   adminListingQueueQuery,
   listingIdParam,
+  markReviewedBody,
   rejectListingBody,
   suspendListingBody,
   type AdminListingQueueQuery,
   type ListingIdParam,
+  type MarkReviewedBody,
   type RejectListingBody,
   type SuspendListingBody,
 } from '@one/shared'
@@ -63,5 +65,15 @@ adminListingsRouter.post(
   async (req, res) => {
     const { listingId } = validated<ListingIdParam>(req, 'params')
     res.json(await listings.reinstateAsAdmin(listingId))
+  },
+)
+
+adminListingsRouter.post(
+  '/:listingId/mark-reviewed',
+  validate({ params: listingIdParam, body: markReviewedBody }),
+  async (req, res) => {
+    const { listingId } = validated<ListingIdParam>(req, 'params')
+    const { changedSinceReviewAt } = validated<MarkReviewedBody>(req, 'body')
+    res.json(await listings.markReviewedAsAdmin(listingId, changedSinceReviewAt))
   },
 )

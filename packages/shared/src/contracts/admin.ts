@@ -2,9 +2,14 @@ import { z } from 'zod'
 import { paginated, paginationQuery } from '../pagination.js'
 import { modeSchema } from './institutes.js'
 import { listingStatusSchema } from './partner.js'
+import { listingChangeSchema } from '../watched.js'
 
 export const adminListingQueueQuery = paginationQuery.extend({
   status: listingStatusSchema.default('PENDING_REVIEW'),
+  /// Published listings with unreviewed changes (BR-018); overrides status.
+  changed: z.stringbool().optional(),
+  /// Name or slug, case-insensitive.
+  q: z.string().trim().min(1).max(100).optional(),
 })
 export type AdminListingQueueQuery = z.infer<typeof adminListingQueueQuery>
 
@@ -25,6 +30,8 @@ export const adminListingSummary = z.object({
   suspensionReason: z.string().nullable(),
   /// In review, and was public before: a suspended institute asking to return.
   resubmittedAfterSuspension: z.boolean(),
+  changedSinceReviewAt: z.iso.datetime().nullable(),
+  changedFieldCount: z.number().int(),
 })
 export type AdminListingSummary = z.infer<typeof adminListingSummary>
 
@@ -38,6 +45,8 @@ export const adminListingDetail = adminListingSummary.extend({
   rejectionReason: z.string().nullable(),
   suspendedAt: z.iso.datetime().nullable(),
   firstPublishedAt: z.iso.datetime().nullable(),
+  /// Watched fields that differ from the approved snapshot, before → after.
+  changes: z.array(listingChangeSchema),
 })
 export type AdminListingDetail = z.infer<typeof adminListingDetail>
 
@@ -48,6 +57,11 @@ export type RejectListingBody = z.infer<typeof rejectListingBody>
 /// BR-015. The institute sees the reason, so it gets the same bounds as a rejection.
 export const suspendListingBody = z.object({ reason: z.string().trim().min(10).max(500) })
 export type SuspendListingBody = z.infer<typeof suspendListingBody>
+
+/// BR-018. The changedSinceReviewAt the admin saw; stale if the partner has
+/// edited since.
+export const markReviewedBody = z.object({ changedSinceReviewAt: z.iso.datetime() })
+export type MarkReviewedBody = z.infer<typeof markReviewedBody>
 
 export const adminListingQueueResponse = paginated(adminListingSummary)
 export type AdminListingQueueResponse = z.infer<typeof adminListingQueueResponse>

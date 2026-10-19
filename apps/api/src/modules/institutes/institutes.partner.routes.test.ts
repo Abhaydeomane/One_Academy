@@ -620,3 +620,39 @@ describe('Resubmission, withdrawal and the review lock (BR-016, BR-017)', () => 
     expect(row.status).toBe('PENDING_REVIEW')
   })
 })
+
+describe('BR-018: edits to a published listing are flagged for review', () => {
+  const patch = (id: string, body: Record<string, unknown>) =>
+    testApp()
+      .patch(`/api/v1/partner/listings/${id}`)
+      .set('x-test-auth', auth('co_alpha'))
+      .send(body)
+  const row = (id: string) => prisma.listing.findUniqueOrThrow({ where: { id } })
+
+  it('does not flag an edit that changes nothing watched', async () => {
+    expect(
+      (await patch(seed.publishedListingId, { shortDescription: 'JEE coaching' })).status,
+    ).toBe(200)
+    expect((await row(seed.publishedListingId)).changedSinceReviewAt).toBeNull()
+  })
+
+  it('flags a watched edit on a published listing and baselines a missing snapshot', async () => {
+    expect((await patch(seed.publishedListingId, { about: 'New about text' })).status).toBe(200)
+    const after = await row(seed.publishedListingId)
+    expect(after.changedSinceReviewAt).toBeInstanceOf(Date)
+    expect((after.reviewedSnapshot as Record<string, unknown>).about).toBeNull()
+  })
+
+  it('clears the flag when an edit restores the snapshot', async () => {
+    await patch(seed.publishedListingId, { locality: 'Baner' })
+    await patch(seed.publishedListingId, { locality: 'Kothrud' })
+    expect((await row(seed.publishedListingId)).changedSinceReviewAt).toBeNull()
+  })
+
+  it('does not flag a draft that was never published', async () => {
+    await patch(seed.draftListingId, { about: 'New about text' })
+    const after = await row(seed.draftListingId)
+    expect(after.changedSinceReviewAt).toBeNull()
+    expect(after.reviewedSnapshot).toBeNull()
+  })
+})

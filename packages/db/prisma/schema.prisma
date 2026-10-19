@@ -154,6 +154,13 @@ model Listing {
   /// Clerk user id of the admin who suspended it. A plain string, as
   /// Organization.verifiedByClerkUserId.
   suspendedByClerkUserId String?
+  /// The watched fields as last approved (BR-018). Written on publish and when
+  /// an admin marks changes reviewed; taken from current values before the
+  /// first partner edit if missing.
+  reviewedSnapshot       Json?
+  /// Set when a partner edit leaves a watched field different from the
+  /// snapshot; doubles as the token "Looks fine" must match.
+  changedSinceReviewAt   DateTime?
   submittedAt      DateTime?
   lat              Float?
   lng              Float?

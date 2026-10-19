@@ -21,8 +21,10 @@ import * as accounts from '../accounts/accounts.service.js'
 import * as batches from '../batches/batches.service.js'
 import {
   assertOrgOwnsListing,
+  ensureReviewBaseline,
   hasEverBeenPublished,
   isSlugTaken,
+  recordPartnerEdit,
   resolvePublishedSlug,
   submitForReview,
   withdrawFromReview,
@@ -294,6 +296,7 @@ export async function updateForOrg(
     examTagIds = tags.map((tag) => tag.id)
   }
 
+  await ensureReviewBaseline(listingId)
   await repo.updateListingAndProfile(
     listingId,
     {
@@ -314,6 +317,7 @@ export async function updateForOrg(
     },
     examTagIds,
   )
+  await recordPartnerEdit(listingId)
 
   return getForOrg(listingId, organizationId)
 }

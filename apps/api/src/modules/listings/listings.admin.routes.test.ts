@@ -515,3 +515,136 @@ describe('Resubmissions after suspension (BR-016)', () => {
     expect(flag(seed.draftListingId)).toBe(false)
   })
 })
+
+describe('Changes since approval (BR-018)', () => {
+  const partner = JSON.stringify({ userId: 'u1', orgId: 'co_alpha', globalRole: 'USER' })
+  const editAbout = (about: string) =>
+    testApp()
+      .patch(`/api/v1/partner/listings/${seed.publishedListingId}`)
+      .set('x-test-auth', partner)
+      .send({ about })
+  const detail = async () =>
+    adminListingDetail.parse(
+      (
+        await testApp()
+          .get(`/api/v1/admin/listings/${seed.publishedListingId}`)
+          .set('x-test-auth', asAdmin)
+      ).body,
+    )
+  const markReviewed = (changedSinceReviewAt: string | null) =>
+    testApp()
+      .post(`/api/v1/admin/listings/${seed.publishedListingId}/mark-reviewed`)
+      .set('x-test-auth', asAdmin)
+      .send({ changedSinceReviewAt })
+
+  beforeEach(async () => {
+    await prisma.organization.update({
+      where: { id: seed.orgId },
+      data: { clerkOrgId: 'co_alpha' },
+    })
+  })
+
+  it('lists changed listings with ?changed=true, oldest change first', async () => {
+    const second = await prisma.listing.create({
+      data: {
+        vertical: 'INSTITUTE',
+        slug: 'alpha-second',
+        name: 'Alpha Second',
+        status: 'PUBLISHED',
+        firstPublishedAt: new Date('2026-01-01T00:00:00Z'),
+        organizationId: seed.orgId,
+        cityId: (await prisma.city.findFirstOrThrow()).id,
+        changedSinceReviewAt: new Date('2026-05-01T00:00:00Z'),
+      },
+    })
+    await prisma.listing.update({
+      where: { id: seed.publishedListingId },
+      data: { changedSinceReviewAt: new Date('2026-06-01T00:00:00Z') },
+    })
+    await prisma.listing.create({
+      data: {
+        vertical: 'INSTITUTE',
+        slug: 'alpha-unchanged',
+        name: 'Alpha Unchanged',
+        status: 'PUBLISHED',
+        organizationId: seed.orgId,
+        cityId: second.cityId,
+      },
+    })
+    const res = await testApp()
+      .get('/api/v1/admin/listings?changed=true')
+      .set('x-test-auth', asAdmin)
+    const body = adminListingQueueResponse.parse(res.body)
+    expect(body.items.map((item) => item.id)).toEqual([second.id, seed.publishedListingId])
+  })
+
+  it('searches by name or slug with q', async () => {
+    const found = await testApp()
+      .get('/api/v1/admin/listings?status=PUBLISHED&q=ALPHA')
+      .set('x-test-auth', asAdmin)
+    expect(adminListingQueueResponse.parse(found.body).items.map((item) => item.slug)).toEqual([
+      'alpha-academy',
+    ])
+    const none = await testApp()
+      .get('/api/v1/admin/listings?status=PUBLISHED&q=nomatch')
+      .set('x-test-auth', asAdmin)
+    expect(adminListingQueueResponse.parse(none.body).total).toBe(0)
+  })
+
+  it('shows before and after in the detail', async () => {
+    await editAbout('New about text')
+    const body = await detail()
+    expect(body.changes).toEqual([{ field: 'about', before: null, after: 'New about text' }])
+    expect(body.changedFieldCount).toBe(1)
+  })
+
+  it('marks reviewed with the current token', async () => {
+    await editAbout('New about text')
+    const res = await markReviewed((await detail()).changedSinceReviewAt)
+    expect(res.status).toBe(200)
+    const row = await prisma.listing.findUniqueOrThrow({ where: { id: seed.publishedListingId } })
+    expect(row.changedSinceReviewAt).toBeNull()
+    expect((row.reviewedSnapshot as Record<string, unknown>).about).toBe('New about text')
+  })
+
+  it('409s REVIEW_STALE when the change token is old', async () => {
+    await editAbout('New about text')
+    const seen = (await detail()).changedSinceReviewAt
+    await new Promise((resolve) => setTimeout(resolve, 5))
+    await editAbout('Edited again after the admin looked')
+    const res = await markReviewed(seen)
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('REVIEW_STALE')
+    const row = await prisma.listing.findUniqueOrThrow({ where: { id: seed.publishedListingId } })
+    expect(row.changedSinceReviewAt).not.toBeNull()
+  })
+
+  it('409s mark-reviewed on a listing that is not published', async () => {
+    await editAbout('New about text')
+    const seen = (await detail()).changedSinceReviewAt
+    await prisma.listing.update({
+      where: { id: seed.publishedListingId },
+      data: { status: 'SUSPENDED' },
+    })
+    const res = await markReviewed(seen)
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('INVALID_STATUS_TRANSITION')
+  })
+
+  it('400s mark-reviewed without a token', async () => {
+    expect((await markReviewed(null)).status).toBe(400)
+  })
+
+  it('publish takes the snapshot', async () => {
+    await prisma.listing.update({
+      where: { id: seed.draftListingId },
+      data: { status: 'PENDING_REVIEW' },
+    })
+    await testApp()
+      .post(`/api/v1/admin/listings/${seed.draftListingId}/publish`)
+      .set('x-test-auth', asAdmin)
+    const row = await prisma.listing.findUniqueOrThrow({ where: { id: seed.draftListingId } })
+    expect((row.reviewedSnapshot as Record<string, unknown>).name).toBe(row.name)
+    expect(row.changedSinceReviewAt).toBeNull()
+  })
+})

@@ -1,4 +1,5 @@
 import { prisma } from '@one/db'
+import type { WatchedSnapshot } from '@one/shared'
 
 // Repositories return plain row types, never Prisma model types, so Prisma
 // stays replaceable and services never depend on the ORM's shapes.
@@ -46,73 +47,136 @@ export async function createRedirect(listingId: string, oldSlug: string): Promis
 
 type Mode = 'ONLINE' | 'OFFLINE' | 'HYBRID'
 
-export type ModerationRow = {
-  id: string
-  slug: string
-  name: string
+/// Everything BR-018 compares: the watched fields, plus what decides whether
+/// they are compared at all.
+export type WatchedRow = {
   status: ListingStatus
-  updatedAt: Date
-  submittedAt: Date | null
+  firstPublishedAt: Date | null
+  reviewedSnapshot: unknown
+  changedSinceReviewAt: Date | null
+  name: string
+  shortDescription: string | null
+  locality: string | null
   address: string | null
   contactPhone: string | null
+  instituteProfile: {
+    about: string | null
+    website: string | null
+    establishedYear: number | null
+    facultyCount: number | null
+    modes: Mode[]
+  } | null
+  tags: { tag: { slug: string; kind: 'EXAM' | 'AMENITY' | 'FACILITY' } }[]
+}
+
+const WATCHED_SELECT = {
+  status: true,
+  firstPublishedAt: true,
+  reviewedSnapshot: true,
+  changedSinceReviewAt: true,
+  name: true,
+  shortDescription: true,
+  locality: true,
+  address: true,
+  contactPhone: true,
+  instituteProfile: {
+    select: { about: true, website: true, establishedYear: true, facultyCount: true, modes: true },
+  },
+  tags: { select: { tag: { select: { slug: true, kind: true } } } },
+} as const
+
+export type ModerationRow = WatchedRow & {
+  id: string
+  slug: string
+  updatedAt: Date
+  submittedAt: Date | null
   suspensionReason: string | null
-  firstPublishedAt: Date | null
   organization: { name: string; verifiedAt: Date | null }
   city: { name: string }
-  instituteProfile: { website: string | null } | null
 }
 
 const MODERATION_SELECT = {
+  ...WATCHED_SELECT,
   id: true,
   slug: true,
-  name: true,
-  status: true,
   updatedAt: true,
   submittedAt: true,
-  address: true,
-  contactPhone: true,
   suspensionReason: true,
-  firstPublishedAt: true,
   organization: { select: { name: true, verifiedAt: true } },
   city: { select: { name: true } },
-  instituteProfile: { select: { website: true } },
 } as const
 
-export type ModerationDetailRow = Omit<ModerationRow, 'instituteProfile'> & {
-  locality: string | null
-  shortDescription: string | null
+export type ModerationDetailRow = ModerationRow & {
   rejectionReason: string | null
   suspendedAt: Date | null
-  instituteProfile: { website: string | null; about: string | null; modes: Mode[] } | null
-  tags: { tag: { slug: string; kind: 'EXAM' | 'AMENITY' | 'FACILITY' } }[]
   _count: { batches: number }
 }
 
 const MODERATION_DETAIL_SELECT = {
   ...MODERATION_SELECT,
-  locality: true,
-  shortDescription: true,
   rejectionReason: true,
   suspendedAt: true,
-  instituteProfile: { select: { website: true, about: true, modes: true } },
-  tags: { select: { tag: { select: { slug: true, kind: true } } } },
   _count: { select: { batches: true } },
 } as const
 
-export async function listByStatus(
-  status: ListingStatus,
+export async function findWatchedRow(id: string): Promise<WatchedRow | null> {
+  return prisma.listing.findUnique({ where: { id }, select: WATCHED_SELECT })
+}
+
+export async function saveSnapshot(id: string, snapshot: WatchedSnapshot): Promise<void> {
+  await prisma.listing.update({
+    where: { id },
+    data: { reviewedSnapshot: snapshot, changedSinceReviewAt: null },
+  })
+}
+
+export async function setChangedSinceReview(id: string, at: Date | null): Promise<void> {
+  await prisma.listing.update({ where: { id }, data: { changedSinceReviewAt: at } })
+}
+
+/// BR-018. Conditional on the token the admin saw, so changes made after they
+/// looked are never silently approved. Returns the rows changed.
+export async function markReviewed(
+  id: string,
+  seen: Date,
+  snapshot: WatchedSnapshot,
+): Promise<number> {
+  const result = await prisma.listing.updateMany({
+    where: { id, status: 'PUBLISHED', changedSinceReviewAt: seen },
+    data: { reviewedSnapshot: snapshot, changedSinceReviewAt: null },
+  })
+  return result.count
+}
+
+export type ModerationFilter = { status: ListingStatus; changed?: boolean; q?: string }
+
+export async function listForModeration(
+  filter: ModerationFilter,
   skip: number,
   take: number,
 ): Promise<{ rows: ModerationRow[]; total: number }> {
+  const where = {
+    ...(filter.changed
+      ? { status: 'PUBLISHED' as const, changedSinceReviewAt: { not: null } }
+      : { status: filter.status }),
+    ...(filter.q
+      ? {
+          OR: [
+            { name: { contains: filter.q, mode: 'insensitive' as const } },
+            { slug: { contains: filter.q.toLowerCase() } },
+          ],
+        }
+      : {}),
+  }
+  const orderBy = filter.changed
+    ? [{ changedSinceReviewAt: 'asc' as const }]
+    : [
+        { submittedAt: { sort: 'asc' as const, nulls: 'last' as const } },
+        { updatedAt: 'asc' as const },
+      ]
   const [rows, total] = await Promise.all([
-    prisma.listing.findMany({
-      where: { status },
-      orderBy: [{ submittedAt: { sort: 'asc', nulls: 'last' } }, { updatedAt: 'asc' }],
-      skip,
-      take,
-      select: MODERATION_SELECT,
-    }),
-    prisma.listing.count({ where: { status } }),
+    prisma.listing.findMany({ where, orderBy, skip, take, select: MODERATION_SELECT }),
+    prisma.listing.count({ where }),
   ])
   return { rows, total }
 }
@@ -201,17 +265,26 @@ export async function markReinstated(id: string): Promise<number> {
 /// it must share the transaction; the verifiedAt: null guard means an existing
 /// verification is never overwritten. The listing write is conditional on the
 /// PENDING_REVIEW status; returns false (and verifies nothing) if another
-/// admin decision got there first.
+/// admin decision got there first. The approved snapshot (BR-018) is written in
+/// the same guarded write.
 export async function publishAndVerify(
   id: string,
   organizationId: string,
   at: Date,
   verifierClerkUserId: string,
+  snapshot: WatchedSnapshot,
 ): Promise<boolean> {
   return prisma.$transaction(async (tx) => {
     const listing = await tx.listing.updateMany({
       where: { id, status: 'PENDING_REVIEW' },
-      data: { status: 'PUBLISHED', publishedAt: at, rejectionReason: null, ...NOT_SUSPENDED },
+      data: {
+        status: 'PUBLISHED',
+        publishedAt: at,
+        rejectionReason: null,
+        ...NOT_SUSPENDED,
+        reviewedSnapshot: snapshot,
+        changedSinceReviewAt: null,
+      },
     })
     if (listing.count === 0) return false
     await tx.listing.updateMany({

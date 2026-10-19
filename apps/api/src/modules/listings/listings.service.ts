@@ -1,8 +1,12 @@
-import type {
-  AdminListingDetail,
-  AdminListingQueueQuery,
-  AdminListingSummary,
-  Paginated,
+import {
+  diffSnapshot,
+  watchedSnapshotSchema,
+  type AdminListingDetail,
+  type AdminListingQueueQuery,
+  type AdminListingSummary,
+  type ListingChange,
+  type Paginated,
+  type WatchedSnapshot,
 } from '@one/shared'
 import { ConflictError, ForbiddenError, NotFoundError } from '../../lib/errors.js'
 import * as repo from './listings.repository.js'
@@ -102,11 +106,15 @@ export async function publish(listingId: string, verifierClerkUserId: string) {
       `Only a listing waiting for review can be published; this listing is ${listing.status}`,
     )
   }
+  // BR-017 locks edits while in review, so this is what the admin read.
+  const watched = await repo.findWatchedRow(listingId)
+  if (!watched) throw new NotFoundError('Listing not found')
   const published = await repo.publishAndVerify(
     listingId,
     listing.organizationId,
     new Date(),
     verifierClerkUserId,
+    snapshotOf(watched),
   )
   if (!published) {
     throw new ConflictError(
@@ -119,6 +127,54 @@ export async function publish(listingId: string, verifierClerkUserId: string) {
 export async function isPublished(listingId: string) {
   const listing = await repo.findById(listingId)
   return listing?.status === 'PUBLISHED'
+}
+
+export function snapshotOf(row: repo.WatchedRow): WatchedSnapshot {
+  return {
+    name: row.name,
+    shortDescription: row.shortDescription,
+    locality: row.locality,
+    address: row.address,
+    contactPhone: row.contactPhone,
+    about: row.instituteProfile?.about ?? null,
+    website: row.instituteProfile?.website ?? null,
+    establishedYear: row.instituteProfile?.establishedYear ?? null,
+    facultyCount: row.instituteProfile?.facultyCount ?? null,
+    modes: row.instituteProfile?.modes ?? [],
+    exams: examSlugs(row),
+  }
+}
+
+const examSlugs = (row: repo.WatchedRow) =>
+  row.tags.filter((entry) => entry.tag.kind === 'EXAM').map((entry) => entry.tag.slug)
+
+/// A stored snapshot that does not parse is treated as missing, so the next
+/// partner edit re-baselines it rather than failing.
+function storedSnapshot(row: repo.WatchedRow): WatchedSnapshot | null {
+  return watchedSnapshotSchema.safeParse(row.reviewedSnapshot).data ?? null
+}
+
+function changesOf(row: repo.WatchedRow): ListingChange[] {
+  const stored = storedSnapshot(row)
+  if (!hasEverBeenPublished(row) || !stored) return []
+  return diffSnapshot(stored, snapshotOf(row))
+}
+
+/// BR-018: called just before a partner edit, so an ever-published listing
+/// with no snapshot is baselined on the values the edit is about to change.
+export async function ensureReviewBaseline(listingId: string) {
+  const row = await repo.findWatchedRow(listingId)
+  if (!row || !hasEverBeenPublished(row) || storedSnapshot(row)) return
+  await repo.saveSnapshot(listingId, snapshotOf(row))
+}
+
+/// BR-018: called just after a partner edit. Every watched change moves the
+/// token, so an admin's "Looks fine" on what they saw cannot cover a later edit.
+export async function recordPartnerEdit(listingId: string) {
+  const row = await repo.findWatchedRow(listingId)
+  if (!row || !hasEverBeenPublished(row)) return
+  const changed = changesOf(row).length > 0
+  await repo.setChangedSinceReview(listingId, changed ? new Date() : null)
 }
 
 function toAdminSummary(row: repo.ModerationRow | repo.ModerationDetailRow): AdminListingSummary {
@@ -137,6 +193,8 @@ function toAdminSummary(row: repo.ModerationRow | repo.ModerationDetailRow): Adm
     updatedAt: row.updatedAt.toISOString(),
     suspensionReason: row.suspensionReason,
     resubmittedAfterSuspension: row.status === 'PENDING_REVIEW' && row.firstPublishedAt !== null,
+    changedSinceReviewAt: row.changedSinceReviewAt ? row.changedSinceReviewAt.toISOString() : null,
+    changedFieldCount: changesOf(row).length,
   }
 }
 
@@ -149,19 +207,24 @@ export async function getForModeration(listingId: string): Promise<AdminListingD
     shortDescription: row.shortDescription,
     about: row.instituteProfile?.about ?? null,
     modes: row.instituteProfile?.modes ?? [],
-    exams: row.tags.filter((entry) => entry.tag.kind === 'EXAM').map((entry) => entry.tag.slug),
+    exams: examSlugs(row),
     batchCount: row._count.batches,
     rejectionReason: row.rejectionReason,
     suspendedAt: row.suspendedAt ? row.suspendedAt.toISOString() : null,
     firstPublishedAt: row.firstPublishedAt ? row.firstPublishedAt.toISOString() : null,
+    changes: changesOf(row),
   }
 }
 
 export async function listForModeration(
   query: AdminListingQueueQuery,
 ): Promise<Paginated<AdminListingSummary>> {
-  const { rows, total } = await repo.listByStatus(
-    query.status,
+  const { rows, total } = await repo.listForModeration(
+    {
+      status: query.status,
+      ...(query.changed === undefined ? {} : { changed: query.changed }),
+      ...(query.q === undefined ? {} : { q: query.q }),
+    },
     (query.page - 1) * query.limit,
     query.limit,
   )
@@ -247,6 +310,29 @@ export async function reinstateAsAdmin(listingId: string): Promise<AdminListingS
     throw new ConflictError(
       'INVALID_STATUS_TRANSITION',
       'This listing was changed by another admin; reload and retry',
+    )
+  }
+  return moderationSummary(listingId)
+}
+
+/// BR-018: the admin has looked at the changes and accepts them as the new
+/// baseline. `seen` is the changedSinceReviewAt they were shown.
+export async function markReviewedAsAdmin(
+  listingId: string,
+  seen: string,
+): Promise<AdminListingSummary> {
+  const row = await repo.findWatchedRow(listingId)
+  if (!row) throw new NotFoundError('Listing not found')
+  if (row.status !== 'PUBLISHED') {
+    throw new ConflictError(
+      'INVALID_STATUS_TRANSITION',
+      `Only a published listing's changes can be reviewed; this listing is ${row.status}`,
+    )
+  }
+  if ((await repo.markReviewed(listingId, new Date(seen), snapshotOf(row))) === 0) {
+    throw new ConflictError(
+      'REVIEW_STALE',
+      'The institute changed this listing again after you opened it; reload to see the changes',
     )
   }
   return moderationSummary(listingId)
