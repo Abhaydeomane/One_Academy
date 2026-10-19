@@ -35,6 +35,14 @@ export const adminListingSummary = z.object({
 })
 export type AdminListingSummary = z.infer<typeof adminListingSummary>
 
+/// Publish, suspend and reinstate change what the public sees. False means the
+/// web app's cache could not be cleared, so the change may take up to the
+/// 300-second TTL to show.
+export const adminDecisionResponse = adminListingSummary.extend({
+  publicCacheCleared: z.boolean(),
+})
+export type AdminDecisionResponse = z.infer<typeof adminDecisionResponse>
+
 export const adminListingDetail = adminListingSummary.extend({
   locality: z.string().nullable(),
   shortDescription: z.string().nullable(),

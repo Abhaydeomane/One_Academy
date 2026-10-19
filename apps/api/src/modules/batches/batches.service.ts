@@ -5,6 +5,7 @@ import type {
   UpdateBatchBody,
 } from '@one/shared'
 import { ConflictError, NotFoundError } from '../../lib/errors.js'
+import { revalidatePublicPages } from '../../lib/revalidate.js'
 import * as accounts from '../accounts/accounts.service.js'
 import { assertOrgOwnsListing, isPublished } from '../listings/listings.service.js'
 import * as repo from './batches.repository.js'
@@ -170,6 +171,10 @@ export async function updateForOrg(
     ...(body.feeAmount === undefined ? {} : { feeAmount: body.feeAmount }),
     ...(body.status ? { status: body.status } : {}),
   })
+
+  // A batch on a live listing is public (or just became so); a draft batch
+  // elsewhere changes nothing anyone can see.
+  if (await isPublished(existing.listingId)) await revalidatePublicPages()
 
   return toPartnerSummary(updated)
 }

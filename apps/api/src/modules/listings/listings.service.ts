@@ -1,5 +1,6 @@
 import {
   diffSnapshot,
+  type AdminDecisionResponse,
   watchedSnapshotSchema,
   type AdminListingDetail,
   type AdminListingQueueQuery,
@@ -9,6 +10,7 @@ import {
   type WatchedSnapshot,
 } from '@one/shared'
 import { ConflictError, ForbiddenError, NotFoundError } from '../../lib/errors.js'
+import { revalidatePublicPages } from '../../lib/revalidate.js'
 import * as repo from './listings.repository.js'
 
 export type ListingVertical = 'INSTITUTE' | 'HOSTEL'
@@ -234,11 +236,12 @@ export async function listForModeration(
 export async function publishAsAdmin(
   listingId: string,
   adminClerkUserId: string,
-): Promise<AdminListingSummary> {
+): Promise<AdminDecisionResponse> {
   await publish(listingId, adminClerkUserId)
-  const row = await repo.findModerationRow(listingId)
-  if (!row) throw new NotFoundError('Listing not found')
-  return toAdminSummary(row)
+  return {
+    ...(await moderationSummary(listingId)),
+    publicCacheCleared: await revalidatePublicPages(),
+  }
 }
 
 /// BR-014: only a listing waiting for review can be rejected, and it goes
@@ -278,7 +281,7 @@ export async function suspendAsAdmin(
   listingId: string,
   reason: string,
   adminClerkUserId: string,
-): Promise<AdminListingSummary> {
+): Promise<AdminDecisionResponse> {
   const listing = await repo.findById(listingId)
   if (!listing) throw new NotFoundError('Listing not found')
   if (listing.status !== 'PUBLISHED') {
@@ -293,11 +296,14 @@ export async function suspendAsAdmin(
       'This listing was changed by another admin; reload and retry',
     )
   }
-  return moderationSummary(listingId)
+  return {
+    ...(await moderationSummary(listingId)),
+    publicCacheCleared: await revalidatePublicPages(),
+  }
 }
 
 /// BR-016: lifting a suspension puts the listing straight back on the site.
-export async function reinstateAsAdmin(listingId: string): Promise<AdminListingSummary> {
+export async function reinstateAsAdmin(listingId: string): Promise<AdminDecisionResponse> {
   const listing = await repo.findById(listingId)
   if (!listing) throw new NotFoundError('Listing not found')
   if (listing.status !== 'SUSPENDED') {
@@ -312,7 +318,10 @@ export async function reinstateAsAdmin(listingId: string): Promise<AdminListingS
       'This listing was changed by another admin; reload and retry',
     )
   }
-  return moderationSummary(listingId)
+  return {
+    ...(await moderationSummary(listingId)),
+    publicCacheCleared: await revalidatePublicPages(),
+  }
 }
 
 /// BR-018: the admin has looked at the changes and accepts them as the new

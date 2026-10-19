@@ -3668,6 +3668,9 @@
                     },
                     "changedFieldCount": {
                       "type": "integer"
+                    },
+                    "publicCacheCleared": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -3686,7 +3689,8 @@
                     "suspensionReason",
                     "resubmittedAfterSuspension",
                     "changedSinceReviewAt",
-                    "changedFieldCount"
+                    "changedFieldCount",
+                    "publicCacheCleared"
                   ]
                 }
               }
@@ -4344,6 +4348,9 @@
                     },
                     "changedFieldCount": {
                       "type": "integer"
+                    },
+                    "publicCacheCleared": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -4362,7 +4369,8 @@
                     "suspensionReason",
                     "resubmittedAfterSuspension",
                     "changedSinceReviewAt",
-                    "changedFieldCount"
+                    "changedFieldCount",
+                    "publicCacheCleared"
                   ]
                 }
               }
@@ -4522,6 +4530,9 @@
                     },
                     "changedFieldCount": {
                       "type": "integer"
+                    },
+                    "publicCacheCleared": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -4540,7 +4551,8 @@
                     "suspensionReason",
                     "resubmittedAfterSuspension",
                     "changedSinceReviewAt",
-                    "changedFieldCount"
+                    "changedFieldCount",
+                    "publicCacheCleared"
                   ]
                 }
               }

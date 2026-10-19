@@ -1,6 +1,11 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { prisma } from '@one/db'
-import { adminListingDetail, adminListingQueueResponse, adminListingSummary } from '@one/shared'
+import {
+  adminDecisionResponse,
+  adminListingDetail,
+  adminListingQueueResponse,
+  adminListingSummary,
+} from '@one/shared'
 import { resetDb, seedMinimal, type MinimalSeed } from '../../../test/helpers/db.js'
 import { testApp } from '../../../test/helpers/app.js'
 
@@ -646,5 +651,23 @@ describe('Changes since approval (BR-018)', () => {
     const row = await prisma.listing.findUniqueOrThrow({ where: { id: seed.draftListingId } })
     expect((row.reviewedSnapshot as Record<string, unknown>).name).toBe(row.name)
     expect(row.changedSinceReviewAt).toBeNull()
+  })
+})
+
+describe('publicCacheCleared on decisions that change the public site (REQ-002)', () => {
+  it('is reported by publish, suspend and reinstate (false with no web app configured)', async () => {
+    await prisma.listing.update({
+      where: { id: seed.draftListingId },
+      data: { status: 'PENDING_REVIEW' },
+    })
+    const published = await testApp()
+      .post(`/api/v1/admin/listings/${seed.draftListingId}/publish`)
+      .set('x-test-auth', asAdmin)
+    const suspended = await suspend(seed.draftListingId)
+    const reinstated = await reinstate(seed.draftListingId)
+    for (const res of [published, suspended, reinstated]) {
+      expect(res.status).toBe(200)
+      expect(adminDecisionResponse.parse(res.body).publicCacheCleared).toBe(false)
+    }
   })
 })

@@ -8,6 +8,7 @@ import {
   adminListingDetail,
   adminListingQueueQuery,
   adminListingQueueResponse,
+  adminDecisionResponse,
   adminListingSummary,
   batchListResponse,
   batchSummary,
@@ -269,7 +270,7 @@ registry.registerPath({
   security: secured,
   request: { params: z.object({ listingId: z.string() }) },
   responses: {
-    200: { description: 'Published', ...json(adminListingSummary) },
+    200: { description: 'Published', ...json(adminDecisionResponse) },
     401: UNAUTHENTICATED,
     403: FORBIDDEN,
     404: NOT_FOUND,
@@ -317,7 +318,7 @@ registry.registerPath({
   security: secured,
   request: { params: z.object({ listingId: z.string() }), body: json(suspendListingBody) },
   responses: {
-    200: { description: 'Suspended', ...json(adminListingSummary) },
+    200: { description: 'Suspended', ...json(adminDecisionResponse) },
     400: BAD_REQUEST,
     401: UNAUTHENTICATED,
     403: FORBIDDEN,
@@ -334,7 +335,7 @@ registry.registerPath({
   security: secured,
   request: { params: z.object({ listingId: z.string() }) },
   responses: {
-    200: { description: 'Reinstated', ...json(adminListingSummary) },
+    200: { description: 'Reinstated', ...json(adminDecisionResponse) },
     401: UNAUTHENTICATED,
     403: FORBIDDEN,
     404: NOT_FOUND,

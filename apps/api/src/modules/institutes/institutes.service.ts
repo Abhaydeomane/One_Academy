@@ -16,6 +16,7 @@ import type {
   UpdateListingBody,
 } from '@one/shared'
 import { BadRequestError, ConflictError, NotFoundError } from '../../lib/errors.js'
+import { revalidatePublicPages } from '../../lib/revalidate.js'
 import { slugify } from '../../lib/slug.js'
 import * as accounts from '../accounts/accounts.service.js'
 import * as batches from '../batches/batches.service.js'
@@ -318,6 +319,8 @@ export async function updateForOrg(
     examTagIds,
   )
   await recordPartnerEdit(listingId)
+  // Edits to a live listing go live (BR-018), so the cached pages must follow.
+  if (current.status === 'PUBLISHED') await revalidatePublicPages()
 
   return getForOrg(listingId, organizationId)
 }
