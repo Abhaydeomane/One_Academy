@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from 'react'
 import { MEDIA_LIMITS, type MediaAsset } from '@one/shared'
 import { downscaleToJpeg } from '@/lib/resize'
+import { settle } from '@/lib/settle'
 import {
   deleteMediaAction,
   moveMediaAction,
@@ -13,6 +14,8 @@ import {
 
 const BUTTON =
   'tap-target inline-flex items-center justify-center rounded-lg border border-gray-300 px-3 text-sm font-medium text-gray-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500'
+const LOST: MediaResult = { ok: false, message: "We couldn't save that photo. Please try again." }
+
 const PRIMARY =
   'tap-target inline-flex items-center justify-center rounded-lg border border-brand-500 px-4 text-sm font-medium text-brand-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500'
 
@@ -56,7 +59,10 @@ export function PhotosSection({
       form.set('listingId', listingId)
       form.set('purpose', purpose)
       form.set('file', blob, 'upload.jpg')
-      const result = await uploadMediaAction(form)
+      const result = await settle(
+        () => uploadMediaAction(form),
+        () => LOST,
+      )
       if (!result.ok) setErrors((current) => [...current, `${file.name}: ${result.message}`])
     }
     setProgress(null)
@@ -106,7 +112,14 @@ export function PhotosSection({
                 disabled={pending}
                 onClick={() =>
                   window.confirm('Remove your logo?') &&
-                  startTransition(async () => report(await deleteMediaAction(listingId, logo.id)))
+                  startTransition(async () =>
+                    report(
+                      await settle(
+                        () => deleteMediaAction(listingId, logo.id),
+                        () => LOST,
+                      ),
+                    ),
+                  )
                 }
               >
                 Remove
@@ -157,7 +170,12 @@ export function PhotosSection({
                         const value = event.target.value
                         if (value !== (photo.alt ?? '')) {
                           startTransition(async () =>
-                            report(await updateAltAction(listingId, photo.id, value)),
+                            report(
+                              await settle(
+                                () => updateAltAction(listingId, photo.id, value),
+                                () => LOST,
+                              ),
+                            ),
                           )
                         }
                       }}
@@ -171,7 +189,12 @@ export function PhotosSection({
                       aria-label={`Move photo ${index + 1} up`}
                       onClick={() =>
                         startTransition(async () =>
-                          report(await moveMediaAction(listingId, photoIds, photo.id, 'up')),
+                          report(
+                            await settle(
+                              () => moveMediaAction(listingId, photoIds, photo.id, 'up'),
+                              () => LOST,
+                            ),
+                          ),
                         )
                       }
                     >
@@ -184,7 +207,12 @@ export function PhotosSection({
                       aria-label={`Move photo ${index + 1} down`}
                       onClick={() =>
                         startTransition(async () =>
-                          report(await moveMediaAction(listingId, photoIds, photo.id, 'down')),
+                          report(
+                            await settle(
+                              () => moveMediaAction(listingId, photoIds, photo.id, 'down'),
+                              () => LOST,
+                            ),
+                          ),
                         )
                       }
                     >
@@ -198,7 +226,12 @@ export function PhotosSection({
                       onClick={() =>
                         window.confirm('Delete this photo?') &&
                         startTransition(async () =>
-                          report(await deleteMediaAction(listingId, photo.id)),
+                          report(
+                            await settle(
+                              () => deleteMediaAction(listingId, photo.id),
+                              () => LOST,
+                            ),
+                          ),
                         )
                       }
                     >

@@ -8,9 +8,18 @@ export async function downscaleToJpeg(file: File, maxEdge = 2048, quality = 0.85
   const width = Math.round(bitmap.width * scale)
   const height = Math.round(bitmap.height * scale)
 
+  // JPEG has no alpha: a canvas exported as JPEG turns transparent pixels
+  // black, so paint white first (a transparent logo stays on white).
+  const paint = (ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null) => {
+    if (!ctx) return
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, width, height)
+    ctx.drawImage(bitmap, 0, 0, width, height)
+  }
+
   if (typeof OffscreenCanvas !== 'undefined') {
     const canvas = new OffscreenCanvas(width, height)
-    canvas.getContext('2d')?.drawImage(bitmap, 0, 0, width, height)
+    paint(canvas.getContext('2d'))
     bitmap.close()
     return canvas.convertToBlob({ type: 'image/jpeg', quality })
   }
@@ -18,7 +27,7 @@ export async function downscaleToJpeg(file: File, maxEdge = 2048, quality = 0.85
   const canvas = document.createElement('canvas')
   canvas.width = width
   canvas.height = height
-  canvas.getContext('2d')?.drawImage(bitmap, 0, 0, width, height)
+  paint(canvas.getContext('2d'))
   bitmap.close()
   return new Promise((resolve, reject) =>
     canvas.toBlob(

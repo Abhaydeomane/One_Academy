@@ -1,3 +1,5 @@
+/// <reference lib="dom" />
+// page.evaluate bodies run in the browser.
 import { expect, test } from '@playwright/test'
 import sharp from 'sharp'
 import { prisma, truncateAll } from '../helpers/db.js'
@@ -55,6 +57,13 @@ test.beforeAll(async ({ request }) => {
     .png()
     .toBuffer()
   photo = await upload('PHOTO', jpeg, 'classroom.jpg')
+  // A portrait phone photo: the case that made the strip taller than a screen.
+  const portrait = await sharp({
+    create: { width: 900, height: 1600, channels: 3, background: '#26a' },
+  })
+    .jpeg()
+    .toBuffer()
+  await upload('PHOTO', portrait, 'results-board.jpg')
   await upload('LOGO', png, 'logo.png')
 })
 
@@ -84,5 +93,27 @@ test('the detail page JSON-LD carries logo and image', async ({ page }) => {
     (await page.locator('script[type="application/ld+json"]').first().textContent()) ?? '{}',
   )
   expect(jsonLd.logo).toMatch(/-256\.webp$/)
-  expect(jsonLd.image).toEqual([expect.stringMatching(/-1600\.webp$/)])
+  expect(jsonLd.image).toEqual([
+    expect.stringMatching(/-1600\.webp$/),
+    expect.stringMatching(/-1600\.webp$/),
+  ])
+})
+
+test('photos stay inside a phone-height strip, portrait ones included', async ({ page }) => {
+  await page.goto(`/institutes/${slug}`)
+  const images = page.locator('img[srcset]')
+  await expect(images).toHaveCount(2)
+  for (const box of [await images.nth(0).boundingBox(), await images.nth(1).boundingBox()]) {
+    expect(box?.height ?? 0).toBeGreaterThan(0)
+    expect(box?.height ?? Infinity).toBeLessThanOrEqual(320)
+  }
+})
+
+test('a phone downloads the 640 variant, not the 1600', async ({ page }) => {
+  await page.goto(`/institutes/${slug}`)
+  const first = page.locator('img[srcset]').first()
+  await expect(first).toBeVisible()
+  await expect
+    .poll(() => first.evaluate((img: HTMLImageElement) => img.currentSrc))
+    .toMatch(/-640\.webp$/)
 })

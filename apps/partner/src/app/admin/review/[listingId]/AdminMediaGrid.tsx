@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import type { MediaAsset } from '@one/shared'
+import { settle } from '@/lib/settle'
 import { deleteMediaAsAdminAction } from './actions'
 
 /// The listing's logo and photos, each removable on its own (P2c spec §7).
@@ -33,7 +34,10 @@ export function AdminMediaGrid({ listingId, media }: { listingId: string; media:
               onClick={() =>
                 window.confirm('Delete this photo? The institute will see it gone.') &&
                 startTransition(async () => {
-                  const result = await deleteMediaAsAdminAction(listingId, asset.id)
+                  const result = await settle(
+                    () => deleteMediaAsAdminAction(listingId, asset.id),
+                    () => "We couldn't delete that photo. Please try again.",
+                  )
                   setMessage(result)
                 })
               }

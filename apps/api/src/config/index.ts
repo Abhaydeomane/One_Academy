@@ -3,7 +3,7 @@ import { z } from 'zod'
 // Clerk keys are optional so the API boots for public-route development and
 // tests before Clerk is configured. The auth middleware fails loudly if a
 // protected route is hit without them.
-const envSchema = z
+export const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().int().default(4000),
@@ -18,9 +18,12 @@ const envSchema = z
     REVALIDATE_SECRET: z.string().min(32).optional(),
     // Media storage (ADR 0019): fs for local development and tests, s3 for
     // any S3-compatible provider once hosting is chosen.
-    STORAGE_DRIVER: z.enum(['fs', 's3']).default('fs'),
+    // No defaults here: outside production they fall back below; in production
+    // both must be chosen explicitly (refine), because the local values would
+    // write to a container's disk and publish localhost URLs.
+    STORAGE_DRIVER: z.enum(['fs', 's3']).optional(),
     MEDIA_FS_ROOT: z.string().min(1).default('.media'),
-    MEDIA_PUBLIC_BASE_URL: z.url().default('http://localhost:4000/media'),
+    MEDIA_PUBLIC_BASE_URL: z.url().optional(),
     S3_ENDPOINT: z.url().optional(),
     S3_BUCKET: z.string().min(1).optional(),
     S3_REGION: z.string().min(1).default('auto'),
@@ -31,6 +34,14 @@ const envSchema = z
     error: 'WEB_REVALIDATE_URL and REVALIDATE_SECRET must be set together',
     path: ['REVALIDATE_SECRET'],
   })
+  .refine(
+    (env) =>
+      env.NODE_ENV !== 'production' || Boolean(env.STORAGE_DRIVER && env.MEDIA_PUBLIC_BASE_URL),
+    {
+      error: 'Production needs STORAGE_DRIVER and MEDIA_PUBLIC_BASE_URL set explicitly',
+      path: ['STORAGE_DRIVER'],
+    },
+  )
   .refine(
     (env) =>
       env.STORAGE_DRIVER !== 's3' ||
@@ -60,9 +71,12 @@ export const config = {
   webRevalidateUrl: parsed.data.WEB_REVALIDATE_URL,
   revalidateSecret: parsed.data.REVALIDATE_SECRET,
   storage: {
-    driver: parsed.data.STORAGE_DRIVER,
+    driver: parsed.data.STORAGE_DRIVER ?? 'fs',
     fsRoot: parsed.data.MEDIA_FS_ROOT,
-    publicBaseUrl: parsed.data.MEDIA_PUBLIC_BASE_URL.replace(/\/+$/, ''),
+    publicBaseUrl: (parsed.data.MEDIA_PUBLIC_BASE_URL ?? 'http://localhost:4000/media').replace(
+      /\/+$/,
+      '',
+    ),
     s3:
       parsed.data.S3_ENDPOINT &&
       parsed.data.S3_BUCKET &&

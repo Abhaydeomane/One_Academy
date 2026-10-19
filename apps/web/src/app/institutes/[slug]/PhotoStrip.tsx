@@ -1,7 +1,11 @@
 import type { InstituteDetail } from '@one/shared'
 
-/// Swipeable on a phone, a 3-up grid from lg:. Width and height come from the
-/// asset, so the page reserves space and does not jump as photos arrive.
+/// Swipeable on a phone, a 3-up grid from lg:. Every photo sits in a fixed-height
+/// frame (cropped with object-cover), so a portrait phone photo cannot push the
+/// rest of the page a screen down, and nothing jumps as photos arrive.
+///
+/// `sizes` deliberately under-reports the phone width so phones take the 640
+/// variant (spec §10) — a data saver on mobile networks; 1600 is for lg: up.
 export function PhotoStrip({ photos, name }: { photos: InstituteDetail['photos']; name: string }) {
   if (photos.length === 0) return null
   return (
@@ -12,13 +16,13 @@ export function PhotoStrip({ photos, name }: { photos: InstituteDetail['photos']
             <img
               src={photo.thumbUrl}
               srcSet={`${photo.thumbUrl} 640w, ${photo.url} 1600w`}
-              sizes="(min-width: 1024px) 33vw, 85vw"
+              sizes="(min-width: 1024px) 33vw, 240px"
               width={photo.width}
               height={photo.height}
               alt={photo.alt ?? `${name} photo ${index + 1}`}
               loading={index === 0 ? 'eager' : 'lazy'}
               decoding="async"
-              className="h-auto w-full"
+              className="h-56 w-full object-cover lg:h-64"
             />
           </a>
         </li>

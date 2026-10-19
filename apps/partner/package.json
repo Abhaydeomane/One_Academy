@@ -9,7 +9,7 @@
     "start": "next start --port 3001",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "echo no-op"
+    "test": "vitest run"
   },
   "dependencies": {
     "@clerk/nextjs": "catalog:",
@@ -27,6 +27,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "tailwindcss": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }
