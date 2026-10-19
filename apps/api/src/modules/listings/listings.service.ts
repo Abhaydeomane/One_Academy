@@ -162,21 +162,33 @@ function changesOf(row: repo.WatchedRow): ListingChange[] {
   return diffSnapshot(stored, snapshotOf(row))
 }
 
-/// BR-018: called just before a partner edit, so an ever-published listing
-/// with no snapshot is baselined on the values the edit is about to change.
-export async function ensureReviewBaseline(listingId: string) {
+/// BR-018: called just before a partner edit. Baselines an ever-published
+/// listing that has no snapshot on the values the edit is about to change, and
+/// returns those pre-edit values so recordPartnerEdit can tell what this edit
+/// changed. Null for a listing that has never been public.
+export async function ensureReviewBaseline(listingId: string): Promise<WatchedSnapshot | null> {
   const row = await repo.findWatchedRow(listingId)
-  if (!row || !hasEverBeenPublished(row) || storedSnapshot(row)) return
-  await repo.saveSnapshot(listingId, snapshotOf(row))
+  if (!row || !hasEverBeenPublished(row)) return null
+  const before = snapshotOf(row)
+  if (!storedSnapshot(row)) await repo.saveSnapshot(listingId, before)
+  return before
 }
 
-/// BR-018: called just after a partner edit. Every watched change moves the
-/// token, so an admin's "Looks fine" on what they saw cannot cover a later edit.
-export async function recordPartnerEdit(listingId: string) {
+/// BR-018: called just after a partner edit, with ensureReviewBaseline's result.
+/// The token moves only when this edit changed a watched value, so a "Looks
+/// fine" on what the admin saw cannot cover a later change — while a re-save of
+/// identical values (the form re-sends every field) neither re-dates the change
+/// in the oldest-first queue nor makes "Looks fine" stale.
+export async function recordPartnerEdit(listingId: string, before: WatchedSnapshot | null) {
+  if (!before) return
   const row = await repo.findWatchedRow(listingId)
-  if (!row || !hasEverBeenPublished(row)) return
-  const changed = changesOf(row).length > 0
-  await repo.setChangedSinceReview(listingId, changed ? new Date() : null)
+  if (!row) return
+  const after = snapshotOf(row)
+  if (changesOf(row).length === 0) {
+    await repo.setChangedSinceReview(listingId, null)
+  } else if (diffSnapshot(before, after).length > 0) {
+    await repo.setChangedSinceReview(listingId, new Date())
+  }
 }
 
 function toAdminSummary(row: repo.ModerationRow | repo.ModerationDetailRow): AdminListingSummary {

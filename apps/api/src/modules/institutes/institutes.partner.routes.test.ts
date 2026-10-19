@@ -649,6 +649,29 @@ describe('BR-018: edits to a published listing are flagged for review', () => {
     expect((await row(seed.publishedListingId)).changedSinceReviewAt).toBeNull()
   })
 
+  it('keeps the change token when a flagged listing is re-saved without a watched change', async () => {
+    await patch(seed.publishedListingId, { about: 'New about text' })
+    const flagged = (await row(seed.publishedListingId)).changedSinceReviewAt
+    expect(flagged).toBeInstanceOf(Date)
+    await new Promise((resolve) => setTimeout(resolve, 5))
+
+    // The verification form re-sends every field on Save, changed or not.
+    await patch(seed.publishedListingId, {
+      about: 'New about text',
+      shortDescription: 'JEE coaching',
+    })
+    expect((await row(seed.publishedListingId)).changedSinceReviewAt).toEqual(flagged)
+  })
+
+  it('moves the change token when a flagged listing gets another watched change', async () => {
+    await patch(seed.publishedListingId, { about: 'New about text' })
+    const flagged = (await row(seed.publishedListingId)).changedSinceReviewAt
+    await new Promise((resolve) => setTimeout(resolve, 5))
+    await patch(seed.publishedListingId, { locality: 'Baner' })
+    const moved = (await row(seed.publishedListingId)).changedSinceReviewAt
+    expect(moved!.getTime()).toBeGreaterThan(flagged!.getTime())
+  })
+
   it('does not flag a draft that was never published', async () => {
     await patch(seed.draftListingId, { about: 'New about text' })
     const after = await row(seed.draftListingId)

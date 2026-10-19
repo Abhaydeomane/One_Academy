@@ -23,8 +23,12 @@ export async function revalidatePublicPages(
     const response = await fetch(target.url, {
       method: 'POST',
       headers: { 'x-revalidate-secret': target.secret },
+      // fetch forwards custom headers across a redirect, so following one would
+      // hand the secret to whatever host a misconfigured URL points at.
+      redirect: 'error',
       signal: AbortSignal.timeout(2000),
     })
+    await response.body?.cancel()
     if (!response.ok) logger.warn({ status: response.status }, 'public cache revalidation refused')
     return response.ok
   } catch (err) {

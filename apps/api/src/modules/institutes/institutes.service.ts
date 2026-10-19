@@ -297,8 +297,8 @@ export async function updateForOrg(
     examTagIds = tags.map((tag) => tag.id)
   }
 
-  await ensureReviewBaseline(listingId)
-  await repo.updateListingAndProfile(
+  const beforeEdit = await ensureReviewBaseline(listingId)
+  const written = await repo.updateListingAndProfile(
     listingId,
     {
       ...(body.name ? { name: body.name } : {}),
@@ -318,7 +318,13 @@ export async function updateForOrg(
     },
     examTagIds,
   )
-  await recordPartnerEdit(listingId)
+  if (!written) {
+    throw new ConflictError(
+      'LISTING_UNDER_REVIEW',
+      'A listing cannot be edited while it is being reviewed; withdraw it first',
+    )
+  }
+  await recordPartnerEdit(listingId, beforeEdit)
   // Edits to a live listing go live (BR-018), so the cached pages must follow.
   if (current.status === 'PUBLISHED') await revalidatePublicPages()
 

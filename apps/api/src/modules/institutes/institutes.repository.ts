@@ -183,17 +183,23 @@ export async function updateListingAndProfile(
     modes?: Mode[]
   },
   examTagIds?: string[],
-): Promise<void> {
-  await prisma.$transaction(async (tx) => {
-    await tx.listing.update({
-      where: { id },
-      data: {
-        ...listing,
-        ...(Object.keys(profile).length > 0
-          ? { instituteProfile: { upsert: { create: profile, update: profile } } }
-          : {}),
-      },
+): Promise<boolean> {
+  return prisma.$transaction(async (tx) => {
+    // BR-017, enforced by the write: conditional on not being in review, so a
+    // submit that lands after the service's status check cannot be followed by
+    // an edit. The row lock also holds that submit until this commits.
+    const written = await tx.listing.updateMany({
+      where: { id, status: { not: 'PENDING_REVIEW' } },
+      data: listing,
     })
+    if (written.count === 0) return false
+    if (Object.keys(profile).length > 0) {
+      await tx.instituteProfile.upsert({
+        where: { listingId: id },
+        create: { listingId: id, ...profile },
+        update: profile,
+      })
+    }
     if (examTagIds) {
       // Exams are replaced as a set; amenity and facility tags are untouched.
       await tx.listingTag.deleteMany({ where: { listingId: id, tag: { kind: 'EXAM' } } })
@@ -201,6 +207,7 @@ export async function updateListingAndProfile(
         data: examTagIds.map((tagId) => ({ listingId: id, tagId })),
       })
     }
+    return true
   })
 }
 

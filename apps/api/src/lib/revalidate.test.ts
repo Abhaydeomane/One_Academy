@@ -54,3 +54,30 @@ describe('revalidatePublicPages', () => {
     expect(await revalidatePublicPages({ url: 'http://127.0.0.1:9/', secret: SECRET })).toBe(false)
   })
 })
+
+describe('revalidatePublicPages and redirects', () => {
+  let other: Server | undefined
+
+  afterEach(async () => {
+    other?.closeAllConnections()
+    await new Promise((resolve) => other?.close(resolve) ?? resolve(undefined))
+    other = undefined
+  })
+
+  it('never forwards the secret to a redirect target', async () => {
+    let leaked: string | string[] | undefined
+    other = createServer((req, res) => {
+      leaked = req.headers['x-revalidate-secret']
+      res.writeHead(200).end()
+    })
+    await new Promise<void>((resolve) => other!.listen(0, '127.0.0.1', resolve))
+    const target = `http://127.0.0.1:${(other.address() as AddressInfo).port}/elsewhere`
+
+    server = createServer((_req, res) => res.writeHead(307, { location: target }).end())
+    await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve))
+    const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/revalidate`
+
+    expect(await revalidatePublicPages({ url, secret: SECRET })).toBe(false)
+    expect(leaked).toBeUndefined()
+  })
+})
