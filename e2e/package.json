@@ -13,6 +13,7 @@
     "@one/db": "workspace:*",
     "@playwright/test": "catalog:",
     "@types/node": "catalog:",
+    "sharp": "catalog:",
     "typescript": "catalog:"
   }
 }

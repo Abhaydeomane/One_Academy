@@ -7,6 +7,7 @@ import { CompareBar } from '../CompareBar'
 import { CompareCheckbox } from '../CompareCheckbox'
 import { FilterRail } from './FilterRail'
 import { SearchForm } from './SearchForm'
+import { InstituteLogo } from '../InstituteLogo'
 
 export const revalidate = 300
 
@@ -128,9 +129,12 @@ export default async function InstitutesPage({ searchParams }: { searchParams: S
                   href={`/institutes/${institute.slug}`}
                   className="block h-full rounded-lg border border-gray-200 bg-white p-4 pr-12 active:bg-gray-50"
                 >
-                  <h2 className="text-base font-semibold leading-snug text-brand-700">
-                    {institute.name}
-                  </h2>
+                  <div className="flex items-start gap-3">
+                    <InstituteLogo url={institute.logoUrl} size={48} />
+                    <h2 className="text-base font-semibold leading-snug text-brand-700">
+                      {institute.name}
+                    </h2>
+                  </div>
                   <p className="mt-1 text-sm text-gray-600">
                     {institute.locality ? `${institute.locality}, ` : ''}
                     {institute.city.name}

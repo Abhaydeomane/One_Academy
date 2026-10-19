@@ -6,6 +6,8 @@ import { batchListResponse, buildLandingPath, instituteDetail, safeHttpUrl } fro
 import { apiGet, apiGetOptional } from '@/lib/api'
 import { formatDateRange, formatFee, formatSeats } from '@/lib/format'
 import { EnquiryForm } from './EnquiryForm'
+import { InstituteLogo } from '../../InstituteLogo'
+import { PhotoStrip } from './PhotoStrip'
 
 export const revalidate = 300
 
@@ -46,6 +48,8 @@ export default async function InstituteDetailPage({ params }: { params: Params }
     ...(institute.shortDescription ? { description: institute.shortDescription } : {}),
     ...(safeHttpUrl(institute.website) ? { url: safeHttpUrl(institute.website) } : {}),
     ...(institute.establishedYear ? { foundingDate: String(institute.establishedYear) } : {}),
+    ...(institute.logo ? { logo: institute.logo.url } : {}),
+    ...(institute.photos.length > 0 ? { image: institute.photos.map((photo) => photo.url) } : {}),
     address: {
       '@type': 'PostalAddress',
       addressLocality: institute.city.name,
@@ -72,7 +76,10 @@ export default async function InstituteDetailPage({ params }: { params: Params }
       />
 
       <header className="space-y-2.5">
-        <h1 className="text-2xl font-bold leading-tight sm:text-3xl">{institute.name}</h1>
+        <div className="flex items-center gap-3">
+          <InstituteLogo url={institute.logo?.url ?? null} size={96} />
+          <h1 className="text-2xl font-bold leading-tight sm:text-3xl">{institute.name}</h1>
+        </div>
         <p className="text-sm text-gray-600">
           {institute.locality ? `${institute.locality}, ` : ''}
           {institute.city.name}
@@ -87,6 +94,8 @@ export default async function InstituteDetailPage({ params }: { params: Params }
           ))}
         </div>
       </header>
+
+      <PhotoStrip photos={institute.photos} name={institute.name} />
 
       {institute.about ? (
         <section className="space-y-2">

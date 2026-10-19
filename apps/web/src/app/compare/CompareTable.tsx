@@ -4,6 +4,7 @@ import type { CompareColumn } from '@one/shared'
 import { formatDateRange, formatFee, formatSeats } from '@/lib/format'
 import { BatchPicker } from './BatchPicker'
 import { superlatives } from './superlatives'
+import { InstituteLogo } from '../InstituteLogo'
 
 function Tag({ children }: { children: string }) {
   return (
@@ -95,8 +96,9 @@ export function CompareTable({
               >
                 <Link
                   href={`/institutes/${column.institute.slug}`}
-                  className="font-semibold text-brand-700"
+                  className="flex items-start gap-2 font-semibold text-brand-700"
                 >
+                  <InstituteLogo url={column.institute.logoUrl} size={48} />
                   {column.institute.name}
                 </Link>
                 <BatchPicker

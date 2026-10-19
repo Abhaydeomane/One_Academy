@@ -1,3 +1,4 @@
+import { tmpdir } from 'node:os'
 import { defineConfig, devices } from '@playwright/test'
 
 // A dedicated database: these specs truncate tables, so sharing one_academy_test
@@ -42,6 +43,10 @@ export default defineConfig({
         NODE_ENV: 'test',
         PORT: '4100',
         WEB_REVALIDATE_URL: 'http://localhost:3200/api/revalidate',
+        // media.spec.ts uploads through the API; the fs driver serves them.
+        STORAGE_DRIVER: 'fs',
+        MEDIA_FS_ROOT: `${tmpdir()}/one-academy-media-e2e`,
+        MEDIA_PUBLIC_BASE_URL: 'http://localhost:4100/media',
         REVALIDATE_SECRET: E2E_REVALIDATE_SECRET,
       },
     },
