@@ -3,6 +3,7 @@ import { paginated, paginationQuery } from '../pagination.js'
 import { modeSchema } from './institutes.js'
 import { listingStatusSchema } from './partner.js'
 import { listingChangeSchema } from '../watched.js'
+import { mediaAsset } from './media.js'
 
 export const adminListingQueueQuery = paginationQuery.extend({
   status: listingStatusSchema.default('PENDING_REVIEW'),
@@ -55,6 +56,8 @@ export const adminListingDetail = adminListingSummary.extend({
   firstPublishedAt: z.iso.datetime().nullable(),
   /// Watched fields that differ from the approved snapshot, before → after.
   changes: z.array(listingChangeSchema),
+  /// Logo first, then photos in display order.
+  media: z.array(mediaAsset),
 })
 export type AdminListingDetail = z.infer<typeof adminListingDetail>
 
@@ -73,3 +76,7 @@ export type MarkReviewedBody = z.infer<typeof markReviewedBody>
 
 export const adminListingQueueResponse = paginated(adminListingSummary)
 export type AdminListingQueueResponse = z.infer<typeof adminListingQueueResponse>
+
+/// An admin removing one logo or photo (spec §7).
+export const adminMediaDeleteResponse = z.object({ publicCacheCleared: z.boolean() })
+export type AdminMediaDeleteResponse = z.infer<typeof adminMediaDeleteResponse>

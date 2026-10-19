@@ -5,6 +5,7 @@ import {
   type WatchedField,
   type WatchedSnapshot,
   type WatchedValue,
+  watchedSnapshotSchema,
 } from './watched.js'
 
 const base: WatchedSnapshot = {
@@ -19,6 +20,8 @@ const base: WatchedSnapshot = {
   facultyCount: 24,
   modes: ['OFFLINE'],
   exams: ['jee'],
+  logo: null,
+  photos: ['p1', 'p2'],
 }
 
 const altered: Record<WatchedField, WatchedValue> = {
@@ -33,6 +36,8 @@ const altered: Record<WatchedField, WatchedValue> = {
   facultyCount: 30,
   modes: ['OFFLINE', 'ONLINE'],
   exams: ['jee', 'neet'],
+  logo: 'l1',
+  photos: ['p1', 'p2', 'p3'],
 }
 
 describe('diffSnapshot (BR-018)', () => {
@@ -67,5 +72,26 @@ describe('diffSnapshot (BR-018)', () => {
   it('reports changes in field order', () => {
     const after = { ...base, exams: ['neet'], name: 'Alpha Prime' }
     expect(diffSnapshot(base, after).map((change) => change.field)).toEqual(['name', 'exams'])
+  })
+})
+
+describe('diffSnapshot — media (BR-018)', () => {
+  it('treats photo order as a change', () => {
+    expect(diffSnapshot(base, { ...base, photos: ['p2', 'p1'] })).toEqual([
+      { field: 'photos', before: ['p1', 'p2'], after: ['p2', 'p1'] },
+    ])
+  })
+
+  it('reports an added logo', () => {
+    expect(diffSnapshot(base, { ...base, logo: 'l1' })).toEqual([
+      { field: 'logo', before: null, after: 'l1' },
+    ])
+  })
+
+  it('parses a snapshot from before media', () => {
+    const p2b = Object.fromEntries(
+      Object.entries(base).filter(([field]) => field !== 'logo' && field !== 'photos'),
+    )
+    expect(watchedSnapshotSchema.parse(p2b)).toMatchObject({ logo: null, photos: [] })
   })
 })

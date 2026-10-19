@@ -301,3 +301,42 @@ describe('captions, order and delete', () => {
     expect(await prisma.mediaAsset.count({ where: { id: asset.id } })).toBe(1)
   })
 })
+
+describe('media changes are moderated like text (BR-018)', () => {
+  const asAdmin = JSON.stringify({ userId: 'u-admin', globalRole: 'ADMIN' })
+  const adminDetail = async (id: string) =>
+    (await testApp().get(`/api/v1/admin/listings/${id}`).set('x-test-auth', asAdmin)).body
+
+  it('flags a published listing when a photo is added', async () => {
+    const asset = mediaAsset.parse((await upload(seed.publishedListingId, jpeg)).body)
+    const row = await prisma.listing.findUniqueOrThrow({ where: { id: seed.publishedListingId } })
+    expect(row.changedSinceReviewAt).toBeInstanceOf(Date)
+    expect((await adminDetail(seed.publishedListingId)).changes).toEqual([
+      { field: 'photos', before: [], after: [asset.id] },
+    ])
+  })
+
+  it('does not flag a never-published draft', async () => {
+    await upload(seed.draftListingId, jpeg)
+    const row = await prisma.listing.findUniqueOrThrow({ where: { id: seed.draftListingId } })
+    expect(row.changedSinceReviewAt).toBeNull()
+  })
+
+  it('flags a reorder', async () => {
+    const a = mediaAsset.parse((await upload(seed.publishedListingId, jpeg)).body)
+    const b = mediaAsset.parse((await upload(seed.publishedListingId, jpeg)).body)
+    // Approve the two photos, then swap them.
+    const detail = await adminDetail(seed.publishedListingId)
+    await testApp()
+      .post(`/api/v1/admin/listings/${seed.publishedListingId}/mark-reviewed`)
+      .set('x-test-auth', asAdmin)
+      .send({ changedSinceReviewAt: detail.changedSinceReviewAt })
+    await testApp()
+      .put(`/api/v1/partner/listings/${seed.publishedListingId}/media/order`)
+      .set('x-test-auth', auth())
+      .send({ assetIds: [b.id, a.id] })
+    expect((await adminDetail(seed.publishedListingId)).changes).toEqual([
+      { field: 'photos', before: [a.id, b.id], after: [b.id, a.id] },
+    ])
+  })
+})

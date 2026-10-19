@@ -67,6 +67,17 @@ export type WatchedRow = {
     modes: Mode[]
   } | null
   tags: { tag: { slug: string; kind: 'EXAM' | 'AMENITY' | 'FACILITY' } }[]
+  /// Ordered by sortOrder (P2c); the service puts the logo first. Declared here, not
+  /// imported: a repository reaches into nothing outside its module (R4).
+  media: {
+    id: string
+    purpose: 'LOGO' | 'PHOTO'
+    storageKey: string
+    alt: string | null
+    width: number
+    height: number
+    sortOrder: number
+  }[]
 }
 
 const WATCHED_SELECT = {
@@ -83,6 +94,18 @@ const WATCHED_SELECT = {
     select: { about: true, website: true, establishedYear: true, facultyCount: true, modes: true },
   },
   tags: { select: { tag: { select: { slug: true, kind: true } } } },
+  media: {
+    select: {
+      id: true,
+      purpose: true,
+      storageKey: true,
+      alt: true,
+      width: true,
+      height: true,
+      sortOrder: true,
+    },
+    orderBy: { sortOrder: 'asc' },
+  },
 } as const
 
 export type ModerationRow = WatchedRow & {
@@ -128,6 +151,11 @@ export async function saveSnapshot(id: string, snapshot: WatchedSnapshot): Promi
     where: { id },
     data: { reviewedSnapshot: snapshot, changedSinceReviewAt: null },
   })
+}
+
+/// Replaces the stored snapshot without touching the change flag.
+export async function updateSnapshot(id: string, snapshot: WatchedSnapshot): Promise<void> {
+  await prisma.listing.update({ where: { id }, data: { reviewedSnapshot: snapshot } })
 }
 
 export async function setChangedSinceReview(id: string, at: Date | null): Promise<void> {

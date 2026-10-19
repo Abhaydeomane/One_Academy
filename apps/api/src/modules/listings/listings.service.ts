@@ -10,6 +10,7 @@ import {
   type WatchedSnapshot,
 } from '@one/shared'
 import { ConflictError, ForbiddenError, NotFoundError } from '../../lib/errors.js'
+import { toMediaAsset } from '../../lib/media.js'
 import { revalidatePublicPages } from '../../lib/revalidate.js'
 import * as repo from './listings.repository.js'
 
@@ -144,6 +145,8 @@ export function snapshotOf(row: repo.WatchedRow): WatchedSnapshot {
     facultyCount: row.instituteProfile?.facultyCount ?? null,
     modes: row.instituteProfile?.modes ?? [],
     exams: examSlugs(row),
+    logo: row.media.find((asset) => asset.purpose === 'LOGO')?.id ?? null,
+    photos: row.media.filter((asset) => asset.purpose === 'PHOTO').map((asset) => asset.id),
   }
 }
 
@@ -212,6 +215,27 @@ export async function applyPartnerEdit<T>(
   return result
 }
 
+/// An admin removed a logo or photo (spec §7). That is not a partner change, so
+/// it leaves the approved snapshot too; and if the removed photo was the only
+/// unreviewed change, the listing is no longer flagged. Call after the delete.
+export async function forgetRemovedMedia(listingId: string, assetId: string) {
+  const row = await repo.findWatchedRow(listingId)
+  if (!row) return
+  const stored = storedSnapshot(row)
+  if (stored) {
+    const photos = Array.isArray(stored.photos) ? stored.photos : []
+    await repo.updateSnapshot(listingId, {
+      ...stored,
+      logo: stored.logo === assetId ? null : stored.logo,
+      photos: photos.filter((id) => id !== assetId),
+    })
+  }
+  const refreshed = await repo.findWatchedRow(listingId)
+  if (refreshed && refreshed.changedSinceReviewAt && changesOf(refreshed).length === 0) {
+    await repo.setChangedSinceReview(listingId, null)
+  }
+}
+
 function toAdminSummary(row: repo.ModerationRow | repo.ModerationDetailRow): AdminListingSummary {
   return {
     id: row.id,
@@ -248,6 +272,10 @@ export async function getForModeration(listingId: string): Promise<AdminListingD
     suspendedAt: row.suspendedAt ? row.suspendedAt.toISOString() : null,
     firstPublishedAt: row.firstPublishedAt ? row.firstPublishedAt.toISOString() : null,
     changes: changesOf(row),
+    // Logo first, then photos in display order, as the partner sees them.
+    media: [...row.media]
+      .sort((a, b) => (a.purpose === b.purpose ? 0 : a.purpose === 'LOGO' ? -1 : 1))
+      .map(toMediaAsset),
   }
 }
 

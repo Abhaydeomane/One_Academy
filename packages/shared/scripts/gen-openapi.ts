@@ -9,6 +9,7 @@ import {
   adminListingQueueQuery,
   adminListingQueueResponse,
   adminDecisionResponse,
+  adminMediaDeleteResponse,
   adminListingSummary,
   batchListResponse,
   batchSummary,
@@ -443,6 +444,22 @@ registry.registerPath({
     403: FORBIDDEN,
     404: NOT_FOUND,
     409: err('INVALID_STATUS_TRANSITION (not published) or REVIEW_STALE (changed again)'),
+  },
+})
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/admin/listings/{listingId}/media/{assetId}',
+  summary: 'Remove one logo or photo from a listing',
+  description:
+    'Any status. Not recorded as a partner change: the approved snapshot forgets the asset (spec §7).',
+  security: secured,
+  request: { params: z.object({ listingId: z.string(), assetId: z.string() }) },
+  responses: {
+    200: { description: 'Removed', ...json(adminMediaDeleteResponse) },
+    401: UNAUTHENTICATED,
+    403: FORBIDDEN,
+    404: NOT_FOUND,
   },
 })
 

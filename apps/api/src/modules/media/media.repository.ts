@@ -156,3 +156,17 @@ export async function deleteGuarded(
     return tx.mediaAsset.delete({ where: { id }, select: { storageKey: true, purpose: true } })
   })
 }
+
+/// An admin's removal: any status, so no review lock (spec §7).
+export async function deleteFromListing(
+  id: string,
+  listingId: string,
+): Promise<{ storageKey: string; purpose: MediaPurpose } | null> {
+  const asset = await prisma.mediaAsset.findFirst({
+    where: { id, listingId },
+    select: { storageKey: true, purpose: true },
+  })
+  if (!asset) return null
+  await prisma.mediaAsset.delete({ where: { id } })
+  return asset
+}

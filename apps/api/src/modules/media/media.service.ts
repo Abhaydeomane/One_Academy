@@ -9,9 +9,15 @@ import {
 } from '../../lib/errors.js'
 import { logger } from '../../lib/logger.js'
 import { toMediaAsset, variantKeys, type MediaPurpose } from '../../lib/media.js'
+import { revalidatePublicPages } from '../../lib/revalidate.js'
 import { deleteObjects, putObject } from '../../lib/storage.js'
 import * as accounts from '../accounts/accounts.service.js'
-import { applyPartnerEdit, assertOrgOwnsListing } from '../listings/listings.service.js'
+import {
+  applyPartnerEdit,
+  assertOrgOwnsListing,
+  forgetRemovedMedia,
+  isPublished,
+} from '../listings/listings.service.js'
 import { processImage } from './media.images.js'
 import * as repo from './media.repository.js'
 
@@ -131,4 +137,19 @@ export async function deleteForOrg(assetId: string, organizationId: string): Pro
     repo.deleteGuarded(assetId, asset.listingId),
   )
   await discard(variantKeys(removed.storageKey, removed.purpose))
+}
+
+/// An admin removes one logo or photo from any listing, in any status, when
+/// that one image is the problem (spec §7). Not recorded as a partner change.
+export async function deleteAsAdmin(
+  listingId: string,
+  assetId: string,
+): Promise<{ publicCacheCleared: boolean }> {
+  const removed = await repo.deleteFromListing(assetId, listingId)
+  if (!removed) throw new NotFoundError('Media not found')
+  await forgetRemovedMedia(listingId, assetId)
+  await discard(variantKeys(removed.storageKey, removed.purpose))
+  return {
+    publicCacheCleared: (await isPublished(listingId)) ? await revalidatePublicPages() : false,
+  }
 }
