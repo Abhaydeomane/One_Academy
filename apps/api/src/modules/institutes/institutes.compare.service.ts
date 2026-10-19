@@ -8,6 +8,7 @@ import {
 import { BadRequestError, NotFoundError } from '../../lib/errors.js'
 import * as batches from '../batches/batches.service.js'
 import * as listings from '../listings/listings.service.js'
+import * as media from '../media/media.service.js'
 import * as repo from './institutes.compare.repository.js'
 
 type Resolved = { requested: string; canonicalSlug: string; listingId: string }
@@ -77,7 +78,8 @@ export async function compare(query: CompareQuery): Promise<CompareResponse> {
     throw new NotFoundError('Not enough institutes left to compare')
   }
 
-  const rows = await repo.findCompareRowsByIds(resolved.map((hit) => hit.listingId))
+  const ids = resolved.map((hit) => hit.listingId)
+  const [rows, logos] = await Promise.all([repo.findCompareRowsByIds(ids), media.logoUrlsFor(ids)])
   const byId = new Map(rows.map((row) => [row.id, row]))
 
   const columns: CompareResponse['columns'] = []
@@ -109,6 +111,7 @@ export async function compare(query: CompareQuery): Promise<CompareResponse> {
         establishedYear: row.instituteProfile?.establishedYear ?? null,
         facultyCount: row.instituteProfile?.facultyCount ?? null,
         batchCount: options.length,
+        logoUrl: logos.get(row.id) ?? null,
       },
       pinned: requestedBatch ?? defaultPin(options),
       pinFellBack: Boolean(pin && !requestedBatch),

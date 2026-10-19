@@ -228,3 +228,23 @@ describe('GET /api/v1/compare', () => {
     expect(column.institute.batchCount).toBe(0)
   })
 })
+
+describe('GET /api/v1/compare — logos (P2c)', () => {
+  it('compare columns carry logoUrl', async () => {
+    const alpha = await prisma.listing.findUniqueOrThrow({ where: { slug: 'alpha' } })
+    const logo = await prisma.mediaAsset.create({
+      data: {
+        listingId: alpha.id,
+        purpose: 'LOGO',
+        storageKey: `listings/${alpha.id}/logo`,
+        width: 256,
+        height: 256,
+      },
+    })
+    const body = compareResponse.parse((await get('slug=alpha&slug=beta')).body)
+    expect(body.columns[0]?.institute.logoUrl).toBe(
+      `http://localhost:4000/media/${logo.storageKey}-256.webp`,
+    )
+    expect(body.columns[1]?.institute.logoUrl).toBeNull()
+  })
+})

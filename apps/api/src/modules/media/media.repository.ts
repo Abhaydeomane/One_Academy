@@ -170,3 +170,13 @@ export async function deleteFromListing(
   await prisma.mediaAsset.delete({ where: { id } })
   return asset
 }
+
+export async function listLogos(
+  listingIds: string[],
+): Promise<{ listingId: string; storageKey: string }[]> {
+  if (listingIds.length === 0) return []
+  return prisma.mediaAsset.findMany({
+    where: { listingId: { in: listingIds }, purpose: 'LOGO' },
+    select: { listingId: true, storageKey: true },
+  })
+}

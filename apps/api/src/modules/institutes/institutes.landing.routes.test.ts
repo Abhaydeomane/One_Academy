@@ -234,3 +234,22 @@ describe('GET /api/v1/landing/indexable', () => {
     expect(body.paths).not.toContain('/neet-coaching-in-pune')
   })
 })
+
+describe('GET /api/v1/landing — logos (P2c)', () => {
+  it('landing cards carry logoUrl', async () => {
+    const listing = await prisma.listing.findUniqueOrThrow({ where: { slug: 'pune-a' } })
+    const logo = await prisma.mediaAsset.create({
+      data: {
+        listingId: listing.id,
+        purpose: 'LOGO',
+        storageKey: `listings/${listing.id}/logo`,
+        width: 256,
+        height: 256,
+      },
+    })
+    const body = landingPageResponse.parse((await get('/jee-coaching-in-pune')).body)
+    const card = body.listings.items.find((item) => item.slug === 'pune-a')
+    expect(card?.logoUrl).toBe(`http://localhost:4000/media/${logo.storageKey}-256.webp`)
+    expect(body.listings.items.find((item) => item.slug === 'pune-b')?.logoUrl).toBeNull()
+  })
+})

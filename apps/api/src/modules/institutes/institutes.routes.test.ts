@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { prisma } from '@one/db'
 import { batchListResponse, instituteDetail, instituteListResponse } from '@one/shared'
-import { resetDb, seedMinimal, type MinimalSeed } from '../../../test/helpers/db.js'
+import { addMedia, resetDb, seedMinimal, type MinimalSeed } from '../../../test/helpers/db.js'
 import { testApp } from '../../../test/helpers/app.js'
 
 let seed: MinimalSeed
@@ -244,5 +244,60 @@ describe('contactPhone never reaches a public response', () => {
   it('shows the address on the public detail', async () => {
     const res = await testApp().get(`/api/v1/institutes/${seed.publishedSlug}`)
     expect(res.body.address).toBe('12 FC Road, Pune 411005')
+  })
+})
+
+describe('public logo and photos (P2c)', () => {
+  const BASE = 'http://localhost:4000/media/'
+
+  it('detail returns the logo and ordered photos with absolute URLs', async () => {
+    const logo = await addMedia(seed.publishedListingId, 'LOGO')
+    const second = await addMedia(seed.publishedListingId, 'PHOTO', 1, 'Library')
+    const first = await addMedia(seed.publishedListingId, 'PHOTO', 0)
+    const body = instituteDetail.parse(
+      (await testApp().get(`/api/v1/institutes/${seed.publishedSlug}`)).body,
+    )
+    expect(body.logo).toEqual({ url: `${BASE}${logo.storageKey}-256.webp`, alt: null })
+    expect(body.photos).toEqual([
+      {
+        url: `${BASE}${first.storageKey}-1600.webp`,
+        thumbUrl: `${BASE}${first.storageKey}-640.webp`,
+        alt: null,
+        width: 1600,
+        height: 1067,
+      },
+      {
+        url: `${BASE}${second.storageKey}-1600.webp`,
+        thumbUrl: `${BASE}${second.storageKey}-640.webp`,
+        alt: 'Library',
+        width: 1600,
+        height: 1067,
+      },
+    ])
+    expect(body.logoUrl).toBe(`${BASE}${logo.storageKey}-256.webp`)
+  })
+
+  it('detail returns logo null and photos [] for a listing without media', async () => {
+    const body = instituteDetail.parse(
+      (await testApp().get(`/api/v1/institutes/${seed.publishedSlug}`)).body,
+    )
+    expect(body).toMatchObject({ logo: null, photos: [], logoUrl: null })
+  })
+
+  it('search cards carry logoUrl', async () => {
+    const logo = await addMedia(seed.publishedListingId, 'LOGO')
+    const body = instituteListResponse.parse((await testApp().get('/api/v1/institutes')).body)
+    expect(body.items[0]?.logoUrl).toBe(`${BASE}${logo.storageKey}-256.webp`)
+  })
+
+  it("a suspended listing's photos appear in no public response", async () => {
+    await addMedia(seed.publishedListingId, 'PHOTO')
+    await prisma.listing.update({
+      where: { id: seed.publishedListingId },
+      data: { status: 'SUSPENDED' },
+    })
+    expect((await testApp().get(`/api/v1/institutes/${seed.publishedSlug}`)).status).toBe(404)
+    const list = instituteListResponse.parse((await testApp().get('/api/v1/institutes')).body)
+    expect(list.items).toEqual([])
   })
 })

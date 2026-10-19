@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { MediaAsset } from '@one/shared'
+import type { InstituteDetail, MediaAsset } from '@one/shared'
 import {
   BadRequestError,
   ConflictError,
@@ -10,7 +10,7 @@ import {
 import { logger } from '../../lib/logger.js'
 import { toMediaAsset, variantKeys, type MediaPurpose } from '../../lib/media.js'
 import { revalidatePublicPages } from '../../lib/revalidate.js'
-import { deleteObjects, putObject } from '../../lib/storage.js'
+import { deleteObjects, publicUrl, putObject } from '../../lib/storage.js'
 import * as accounts from '../accounts/accounts.service.js'
 import {
   applyPartnerEdit,
@@ -152,4 +152,30 @@ export async function deleteAsAdmin(
   return {
     publicCacheCleared: (await isPublished(listingId)) ? await revalidatePublicPages() : false,
   }
+}
+
+/// What students see. Only called for listings already resolved as PUBLISHED.
+export async function publicMediaFor(
+  listingId: string,
+): Promise<Pick<InstituteDetail, 'logo' | 'photos'>> {
+  const assets = await listForListing(listingId)
+  const logo = assets.find((asset) => asset.purpose === 'LOGO')
+  return {
+    logo: logo ? { url: logo.url, alt: logo.alt } : null,
+    photos: assets
+      .filter((asset) => asset.purpose === 'PHOTO')
+      .map((asset) => ({
+        url: asset.url,
+        thumbUrl: asset.thumbUrl ?? asset.url,
+        alt: asset.alt,
+        width: asset.width,
+        height: asset.height,
+      })),
+  }
+}
+
+/// One query for a page of cards.
+export async function logoUrlsFor(listingIds: string[]): Promise<Map<string, string>> {
+  const logos = await repo.listLogos(listingIds)
+  return new Map(logos.map((logo) => [logo.listingId, publicUrl(`${logo.storageKey}-256.webp`)]))
 }

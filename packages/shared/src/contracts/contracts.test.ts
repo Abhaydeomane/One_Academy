@@ -104,6 +104,7 @@ describe('instituteSummary — fee range', () => {
     modes: [],
     exams: [],
     batchCount: 0,
+    logoUrl: null,
   }
 
   it('accepts a null fee range for a listing with no published batches', () => {

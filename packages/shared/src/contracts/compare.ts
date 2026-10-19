@@ -31,6 +31,7 @@ export const compareColumn = z.object({
     facultyCount: z.number().int().nullable(),
     // Upcoming only, unlike the search card's count. See BUG-002.
     batchCount: z.number().int().nonnegative(),
+    logoUrl: z.string().nullable(),
   }),
   /// Null when the institute has no upcoming published batch. The column still
   /// renders: the institute rows are still worth comparing.

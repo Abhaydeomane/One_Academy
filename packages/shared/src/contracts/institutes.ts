@@ -56,6 +56,8 @@ export const instituteSummary = z.object({
   batchCount: z.number().int(),
   minFeeAmount: z.number().int().nullable(),
   maxFeeAmount: z.number().int().nullable(),
+  /// The 256 px logo, or null (P2c).
+  logoUrl: z.string().nullable(),
 })
 export type InstituteSummary = z.infer<typeof instituteSummary>
 
@@ -78,7 +80,18 @@ export const instituteDetail = instituteSummary.extend({
   website: z.string().nullable(),
   establishedYear: z.number().int().nullable(),
   facultyCount: z.number().int().nullable(),
-  media: z.array(z.object({ url: z.string(), alt: z.string().nullable() })),
+  logo: z.object({ url: z.string(), alt: z.string().nullable() }).nullable(),
+  /// In display order; the first is the cover. Width and height are the large
+  /// variant's, so a page can reserve space before the image loads.
+  photos: z.array(
+    z.object({
+      url: z.string(),
+      thumbUrl: z.string(),
+      alt: z.string().nullable(),
+      width: z.number().int(),
+      height: z.number().int(),
+    }),
+  ),
   publishedAt: z.iso.datetime().nullable(),
 })
 export type InstituteDetail = z.infer<typeof instituteDetail>

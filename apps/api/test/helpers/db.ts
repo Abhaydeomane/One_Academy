@@ -109,3 +109,23 @@ export async function seedMinimal(): Promise<MinimalSeed> {
     publishedBatchId: publishedBatch.id,
   }
 }
+
+/// A stored logo or photo row, for read-side tests that need no files.
+export async function addMedia(
+  listingId: string,
+  purpose: 'LOGO' | 'PHOTO',
+  sortOrder = 0,
+  alt: string | null = null,
+) {
+  return prisma.mediaAsset.create({
+    data: {
+      listingId,
+      purpose,
+      storageKey: `listings/${listingId}/${purpose.toLowerCase()}-${sortOrder}-${Math.random().toString(36).slice(2)}`,
+      width: purpose === 'LOGO' ? 256 : 1600,
+      height: purpose === 'LOGO' ? 256 : 1067,
+      sortOrder,
+      alt,
+    },
+  })
+}

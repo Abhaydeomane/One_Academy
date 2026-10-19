@@ -194,6 +194,12 @@
                         "integer",
                         "null"
                       ]
+                    },
+                    "logoUrl": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     }
                   },
                   "required": [
@@ -209,7 +215,8 @@
                     "exams",
                     "batchCount",
                     "minFeeAmount",
-                    "maxFeeAmount"
+                    "maxFeeAmount",
+                    "logoUrl"
                   ]
                 }
               },
@@ -440,6 +447,12 @@
                     "batchCount": {
                       "type": "integer",
                       "minimum": 0
+                    },
+                    "logoUrl": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     }
                   },
                   "required": [
@@ -450,7 +463,8 @@
                     "locality",
                     "establishedYear",
                     "facultyCount",
-                    "batchCount"
+                    "batchCount",
+                    "logoUrl"
                   ]
                 },
                 "pinned": {
@@ -832,6 +846,12 @@
                               "integer",
                               "null"
                             ]
+                          },
+                          "logoUrl": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -847,7 +867,8 @@
                           "exams",
                           "batchCount",
                           "minFeeAmount",
-                          "maxFeeAmount"
+                          "maxFeeAmount",
+                          "logoUrl"
                         ]
                       }
                     },
@@ -1041,6 +1062,12 @@
                         "null"
                       ]
                     },
+                    "logoUrl": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "address": {
                       "type": [
                         "string",
@@ -1071,7 +1098,28 @@
                         "null"
                       ]
                     },
-                    "media": {
+                    "logo": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "url": {
+                          "type": "string"
+                        },
+                        "alt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "alt"
+                      ]
+                    },
+                    "photos": {
                       "type": "array",
                       "items": {
                         "type": "object",
@@ -1079,16 +1127,28 @@
                           "url": {
                             "type": "string"
                           },
+                          "thumbUrl": {
+                            "type": "string"
+                          },
                           "alt": {
                             "type": [
                               "string",
                               "null"
                             ]
+                          },
+                          "width": {
+                            "type": "integer"
+                          },
+                          "height": {
+                            "type": "integer"
                           }
                         },
                         "required": [
                           "url",
-                          "alt"
+                          "thumbUrl",
+                          "alt",
+                          "width",
+                          "height"
                         ]
                       }
                     },
@@ -1114,12 +1174,14 @@
                     "batchCount",
                     "minFeeAmount",
                     "maxFeeAmount",
+                    "logoUrl",
                     "address",
                     "about",
                     "website",
                     "establishedYear",
                     "facultyCount",
-                    "media",
+                    "logo",
+                    "photos",
                     "publishedAt"
                   ]
                 }

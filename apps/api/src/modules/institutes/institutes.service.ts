@@ -42,7 +42,11 @@ type FeeSummary = {
   publishedBatchCount: number
 }
 
-function toSummary(row: repo.InstituteRow, fees: FeeSummary): InstituteSummary {
+function toSummary(
+  row: repo.InstituteRow,
+  fees: FeeSummary,
+  logoUrl: string | null,
+): InstituteSummary {
   return {
     id: row.id,
     slug: row.slug,
@@ -57,19 +61,23 @@ function toSummary(row: repo.InstituteRow, fees: FeeSummary): InstituteSummary {
     batchCount: fees.publishedBatchCount,
     minFeeAmount: fees.minFeeAmount,
     maxFeeAmount: fees.maxFeeAmount,
+    logoUrl,
   }
 }
 
-function toDetail(row: repo.InstituteRow, fees: FeeSummary): InstituteDetail {
+function toDetail(
+  row: repo.InstituteRow,
+  fees: FeeSummary,
+  publicMedia: Pick<InstituteDetail, 'logo' | 'photos'>,
+): InstituteDetail {
   return {
-    ...toSummary(row, fees),
+    ...toSummary(row, fees, publicMedia.logo?.url ?? null),
+    ...publicMedia,
     address: row.address,
     about: row.instituteProfile?.about ?? null,
     website: row.instituteProfile?.website ?? null,
     establishedYear: row.instituteProfile?.establishedYear ?? null,
     facultyCount: row.instituteProfile?.facultyCount ?? null,
-    // Replaced by logo and photos in P2c Task 5.
-    media: [],
     publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
   }
 }
@@ -87,12 +95,13 @@ export async function summariesForFilters(
   filters: repo.SearchFilters,
 ): Promise<Paginated<InstituteSummary>> {
   const matched = await repo.searchPublished(filters)
-  const rows = await repo.findSummariesByIds(matched.hits.map((hit) => hit.id))
+  const ids = matched.hits.map((hit) => hit.id)
+  const [rows, logos] = await Promise.all([repo.findSummariesByIds(ids), media.logoUrlsFor(ids)])
   const byId = new Map(rows.map((row) => [row.id, row]))
 
   const items = matched.hits.flatMap((hit) => {
     const row = byId.get(hit.id)
-    return row ? [toSummary(row, hit)] : []
+    return row ? [toSummary(row, hit, logos.get(hit.id) ?? null)] : []
   })
 
   return {
@@ -130,10 +139,13 @@ export async function getPublishedBySlug(slug: string) {
   const row = await repo.findPublishedById(resolved.listingId)
   if (!row) throw new NotFoundError('Institute not found')
 
-  const fees = await batches.feeSummaryForListing(row.id)
+  const [fees, publicMedia] = await Promise.all([
+    batches.feeSummaryForListing(row.id),
+    media.publicMediaFor(row.id),
+  ])
 
   return {
-    detail: toDetail(row, fees),
+    detail: toDetail(row, fees, publicMedia),
     canonicalSlug: resolved.canonicalSlug,
     redirected: resolved.redirected,
   }
