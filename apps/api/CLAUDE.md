@@ -149,3 +149,18 @@ Read `docs/flows/listing-lifecycle.md` and ADRs 0016–0018 before changing tran
 - Partner edits go through `ensureReviewBaseline` before and `recordPartnerEdit` after the
   write (BR-018). A new editable listing field the public reads belongs in
   `WATCHED_LISTING_FIELDS`.
+
+## Media (P2c)
+
+Read `docs/flows/media.md` and ADR 0019 first.
+
+- **`multer` lives only in `middleware/upload.ts`** (R2). Services receive a `Buffer`.
+- **Every image goes through `media.images.processImage`** — never store what a client
+  sent. The decode is the type check, and re-encoding is what strips GPS metadata.
+- **Media writes go through `listings.service.applyPartnerEdit`** and a repository function
+  that takes the listing's row lock (`status <> PENDING_REVIEW`). That one pattern gives
+  the review lock, change tracking, cache clearing and the photo limit under concurrency.
+- **Rows hold `storageKey`, never a URL.** Build URLs with `lib/media.toMediaAsset` or
+  `lib/storage.publicUrl`.
+- Repositories declare their own row types; the R4 lint rule bars them from importing
+  `lib/`.

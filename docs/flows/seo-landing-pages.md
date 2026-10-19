@@ -1,6 +1,6 @@
 # Flow: SEO landing pages
 
-Last verified against commit: c1dcd0cf246cd60346428ddff588360b3ce79dcc
+Last verified against commit: f596c439ed104ca3ac97717b277a613af74c6501
 
 ## Purpose
 
@@ -105,6 +105,9 @@ A fan: one request to `/[landing]`, out to the landing service, which issues one
 three facet queries for the rails — then collapses back into a single response carrying
 `indexable` and `canonicalPath` as resolved booleans and strings, so the page component
 makes no SEO decisions of its own.
+
+Landing cards come from the same `summariesForFilters` as search, so they carry `logoUrl`
+and show the logo exactly as search cards do.
 
 ## Business rules invoked
 

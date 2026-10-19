@@ -30,6 +30,7 @@ mislead the next agent. Use `git log --follow`, `git blame` and the ADRs instead
 | `flows/institute-discovery.md` | Browse, search, filter, detail page, enquiry                   |
 | `flows/seo-landing-pages.md`   | `/jee-coaching-in-pune`, canonicals, sibling rails, sitemap    |
 | `flows/comparison.md`          | Checkbox selection, pinned batches, stale-link degradation     |
+| `flows/media.md`               | Logo and photo upload, re-encoding, storage, moderation        |
 
 ## Keeping flows true
 
@@ -46,6 +47,7 @@ P0 (foundation and one end-to-end slice) is complete: the API, both frontends, t
 documentation system and the moderation gate. P1a (search, filters and facets), P1b
 (programmatic SEO landing pages) and P1c (comparison) are complete on top of it, and so
 are P2a (institute self-registration and verification) and P2b (moderation tooling:
-suspension, the review lock, change review and instant cache clearing). P2c onward are sketched in
+suspension, the review lock, change review and instant cache clearing) and P2c (logo and
+photo upload). P2d onward are sketched in
 `superpowers/specs/2026-10-11-one-academy-foundation-design.md` §16 and each gets its own
 spec before any code.

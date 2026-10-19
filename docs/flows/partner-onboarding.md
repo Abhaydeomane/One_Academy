@@ -1,6 +1,6 @@
 # Flow: Partner onboarding
 
-Last verified against commit: c1dcd0cf246cd60346428ddff588360b3ce79dcc
+Last verified against commit: f596c439ed104ca3ac97717b277a613af74c6501
 
 ## Purpose
 
@@ -69,6 +69,9 @@ partner server action; the shared `phoneSchema` only validates exactly 10 digits
 place a stored website is rendered. On a failed save the form keeps what the partner typed;
 address, phone and exams cannot be cleared once set (the form returns a field error).
 Exam chips are checkbox inputs styled as chips. Submission is in `listing-lifecycle.md`.
+
+The dashboard also has a **Photos** section for the logo and up to ten photos, read-only
+while the listing is in review; see `media.md`.
 
 **Provisioning an unseen organisation**
 

@@ -34,6 +34,12 @@ middleware automatically. Express 4 examples found online add an `asyncHandler` 
 it is unnecessary here and should be rejected in review. A test asserts the behaviour
 holds.
 
+## Later additions
+
+P2c (ADR 0019) added `multer` 2.4.0, `@types/multer` 2.3.0, `sharp` 0.35.5 (the version Next
+already installs, so one native build serves both) and `@aws-sdk/client-s3` 3.1146.0 — the
+newest release at least two weeks old when pinned, not the newest.
+
 ## Alternatives rejected
 
 **Caret ranges with a committed lockfile.** The lockfile does pin resolution, so this is

@@ -94,6 +94,24 @@ site, and the admin screen says so. `pnpm e2e` sets its own values and starts a 
 caching web server on port 3200 (build directory `.next-e2e-cached`) for
 `revalidation.spec.ts`.
 
+## Media storage
+
+Uploaded logos and photos go to `apps/api/.media/` by default (`STORAGE_DRIVER=fs`) and the
+API serves them at `http://localhost:4000/media/...`. Nothing to set up; the directory is
+gitignored. The test suites use a temporary directory instead.
+
+For `STORAGE_DRIVER=s3` set `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`,
+`S3_SECRET_ACCESS_KEY` and point `MEDIA_PUBLIC_BASE_URL` at the bucket's public URL or CDN.
+
+The s3 driver's test runs only when `S3_TEST_ENDPOINT` is set. Any S3-compatible server
+works; Adobe's S3Mock needs no credentials:
+
+```bash
+docker run -d -p 9090:9090 -e initialBuckets=media adobe/s3mock:3.12.0
+S3_TEST_ENDPOINT=http://localhost:9090 S3_BUCKET=media S3_REGION=us-east-1 \
+  S3_ACCESS_KEY_ID=test S3_SECRET_ACCESS_KEY=test pnpm --filter @one/api test -- storage
+```
+
 ## Testing on a phone
 
 Most traffic is phones, and desktop devtools' mobile view is still `localhost`, so it

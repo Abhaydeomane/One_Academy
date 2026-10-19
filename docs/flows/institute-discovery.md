@@ -1,6 +1,6 @@
 # Flow: Institute discovery
 
-Last verified against commit: c1dcd0cf246cd60346428ddff588360b3ce79dcc
+Last verified against commit: f596c439ed104ca3ac97717b277a613af74c6501
 
 ## Purpose
 
@@ -61,7 +61,9 @@ apps/web/src/app/institutes/[slug]/page.tsx
 An old slug resolves through `ListingRedirect` and the route answers 301 with the
 canonical URL.
 
-The detail page shows the partner-supplied street address; `contactPhone` is private and
+The detail page shows the institute's logo and a swipeable photo strip when it has them
+(`media.service.publicMediaFor`; see `media.md`), and cards show the logo (`logoUrlsFor`, one
+query per page). The detail page shows the partner-supplied street address; `contactPhone` is private and
 appears in no public response. A stored website is rendered (page and JSON-LD) only when
 `safeHttpUrl` accepts it.
 

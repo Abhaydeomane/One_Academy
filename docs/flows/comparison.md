@@ -1,6 +1,6 @@
 # Flow: Institute comparison
 
-Last verified against commit: c1dcd0cf246cd60346428ddff588360b3ce79dcc
+Last verified against commit: f596c439ed104ca3ac97717b277a613af74c6501
 
 ## Purpose
 
@@ -97,6 +97,9 @@ A funnel then a fan: many cards collapse to 2–4 checked slugs in one URL; the 
 out to one slug resolution and one upcoming-batch query per column, then collapses back
 into a single response whose `pinned`, `pinFellBack` and `dropped` fields are already
 resolved — so the page makes no judgement of its own beyond formatting and superlatives.
+
+Each column carries the institute's `logoUrl` (`media.service.logoUrlsFor`), shown beside
+its name in the header.
 
 ## Business rules invoked
 

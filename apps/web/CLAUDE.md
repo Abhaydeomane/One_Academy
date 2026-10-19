@@ -102,3 +102,11 @@ true }` — `follow` is deliberate, they pass equity to the institute pages (ADR
   list a `noindex` URL in the sitemap.
 - The fee sentence degrades to nothing when `minFeeAmount` is `null`. Do not print a range
   you do not have.
+
+## Images
+
+Logos and photos are plain `<img>` (`InstituteLogo`, `PhotoStrip`), not `next/image`: the API
+already serves sized WebP variants, and the optimiser would need `remotePatterns` for a
+storage domain that does not exist until hosting is chosen (ADR 0019). Always pass the
+asset's `width` and `height` so nothing shifts, `loading="lazy"` below the first image, and
+a `srcset` when both variants exist.

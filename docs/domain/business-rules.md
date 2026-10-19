@@ -174,6 +174,33 @@ that restores the snapshot clears it. Arrays compare as sets and an empty string
 null. "Looks fine" re-takes the snapshot, conditional on the `changedSinceReviewAt` the
 admin saw (`409 REVIEW_STALE` otherwise). See ADR 0017.
 
+Amended in P2c: the watched fields include `logo` (asset id or null) and `photos` (asset
+ids **in order** — the first is the cover students see, so a reorder is a change). A
+snapshot saved before P2c parses with no logo and no photos. An admin removing one image
+is not a partner change: the asset leaves the snapshot too.
+
 - Implemented: `packages/shared/src/watched.ts`, `listings.service.ensureReviewBaseline`,
   `recordPartnerEdit`, `markReviewedAsAdmin`, `listings.repository.listForModeration`
 - Tested: `watched.test.ts`, `institutes.partner.routes.test.ts`, `listings.admin.routes.test.ts`
+
+## BR-019 — Uploaded images are decoded and re-encoded by the server before storage
+
+The content decides what a file is, never its name or declared type: anything that does not
+decode as JPEG, PNG or WebP is `MEDIA_INVALID NOT_AN_IMAGE`, and over 40 megapixels is
+`TOO_MANY_PIXELS` (refused from the header, before decoding). EXIF orientation is applied
+and **all metadata is dropped** — a phone's GPS position is never published. Only WebP
+variants are stored; originals are not kept. See ADR 0019.
+
+- Implemented: `media.images.processImage`, `middleware/upload.ts`
+- Tested: `media.images.test.ts`, `media.partner.routes.test.ts`
+
+## BR-020 — A listing has at most one logo and ten photos
+
+A second logo replaces the first. The eleventh photo is `409 MEDIA_LIMIT_REACHED`. The
+insert runs under the listing's row lock, so concurrent uploads cannot overshoot the limit;
+the partial unique index `MediaAsset_one_logo_per_listing` backs the logo rule in the
+database.
+
+- Implemented: `MEDIA_LIMITS` in `@one/shared`, `media.repository.insertGuarded`, migration
+  `media_assets`
+- Tested: `media.partner.routes.test.ts` ("never exceeds 10 photos under concurrent uploads")

@@ -1,6 +1,6 @@
 # Flow: Listing lifecycle
 
-Last verified against commit: c1dcd0cf246cd60346428ddff588360b3ce79dcc
+Last verified against commit: f596c439ed104ca3ac97717b277a613af74c6501
 
 ## Purpose
 
@@ -165,6 +165,11 @@ The edit is live at once. If a watched field (`WATCHED_LISTING_FIELDS`) now diff
 **Changed** tab, each change shown before → after (`diffSnapshot`). **Looks fine**
 (`markReviewedAsAdmin` → `markReviewed`) re-takes the snapshot, conditional on the
 `changedSinceReviewAt` the admin saw. See ADR 0017.
+
+**Media** — logo and photo writes reuse the same rules through
+`listings.service.applyPartnerEdit`: refused in review (BR-017), live then flagged on an
+ever-published listing (BR-018, with `logo` and ordered `photos` watched), and an admin can
+remove one image in any status without flagging the listing. See `media.md`.
 
 ## Diagram
 
