@@ -432,6 +432,50 @@ describe('PATCH /api/v1/partner/listings/:listingId — verification details', (
   })
 })
 
+describe('BR-002 amended: freezes follow firstPublishedAt, not status', () => {
+  it('keeps the slug when a suspended listing is renamed', async () => {
+    await prisma.listing.update({
+      where: { id: seed.publishedListingId },
+      data: { status: 'SUSPENDED' },
+    })
+    const res = await testApp()
+      .patch(`/api/v1/partner/listings/${seed.publishedListingId}`)
+      .set('x-test-auth', auth('co_alpha'))
+      .send({ name: 'Alpha Academy Renamed' })
+    expect(res.status).toBe(200)
+    const body = partnerListingDetail.parse(res.body)
+    expect(body.name).toBe('Alpha Academy Renamed')
+    expect(body.slug).toBe('alpha-academy')
+  })
+
+  it('keeps the slug when a once-published listing back in DRAFT is renamed', async () => {
+    await prisma.listing.update({
+      where: { id: seed.publishedListingId },
+      data: { status: 'DRAFT' },
+    })
+    const res = await testApp()
+      .patch(`/api/v1/partner/listings/${seed.publishedListingId}`)
+      .set('x-test-auth', auth('co_alpha'))
+      .send({ name: 'Alpha Academy Renamed' })
+    expect(res.status).toBe(200)
+    expect(partnerListingDetail.parse(res.body).slug).toBe('alpha-academy')
+  })
+
+  it('refuses a city change on a suspended listing', async () => {
+    await prisma.city.create({ data: { slug: 'mumbai', name: 'Mumbai', state: 'Maharashtra' } })
+    await prisma.listing.update({
+      where: { id: seed.publishedListingId },
+      data: { status: 'SUSPENDED' },
+    })
+    const res = await testApp()
+      .patch(`/api/v1/partner/listings/${seed.publishedListingId}`)
+      .set('x-test-auth', auth('co_alpha'))
+      .send({ citySlug: 'mumbai' })
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('CITY_IMMUTABLE')
+  })
+})
+
 describe('POST /api/v1/partner/listings/:listingId/submit (BR-012)', () => {
   it.each([
     ['address', { address: null }],

@@ -154,6 +154,9 @@ model Listing {
   ratingAvg        Float         @default(0)
   ratingCount      Int           @default(0)
   publishedAt      DateTime?
+  /// Set on the first publish only; never overwritten or cleared. Defines
+  /// "has ever been public" (BR-002), which a status check cannot.
+  firstPublishedAt DateTime?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 

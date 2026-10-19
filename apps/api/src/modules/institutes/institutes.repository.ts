@@ -118,6 +118,7 @@ export type PartnerListingRow = {
   rejectionReason: string | null
   shortDescription: string | null
   updatedAt: Date
+  firstPublishedAt: Date | null
   city: { name: string; slug: string }
   instituteProfile: { about: string | null; website: string | null } | null
   tags: { tag: { slug: string; kind: 'EXAM' | 'AMENITY' | 'FACILITY' } }[]
@@ -135,6 +136,7 @@ const PARTNER_SELECT = {
   rejectionReason: true,
   shortDescription: true,
   updatedAt: true,
+  firstPublishedAt: true,
   city: { select: { name: true, slug: true } },
   instituteProfile: { select: { about: true, website: true } },
   tags: { select: { tag: { select: { slug: true, kind: true } } } },

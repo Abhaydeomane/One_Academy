@@ -21,6 +21,7 @@ import * as accounts from '../accounts/accounts.service.js'
 import * as batches from '../batches/batches.service.js'
 import {
   assertOrgOwnsListing,
+  hasEverBeenPublished,
   isSlugTaken,
   resolvePublishedSlug,
   submitForReview,
@@ -238,7 +239,7 @@ export async function updateForOrg(
   let cityId: string | undefined
   let citySlug = current.city.slug
   if (body.citySlug !== undefined && body.citySlug !== current.city.slug) {
-    if (current.status !== 'DRAFT') {
+    if (hasEverBeenPublished(current)) {
       throw new ConflictError(
         'CITY_IMMUTABLE',
         'A listing city can only change while it is a draft',
@@ -252,13 +253,14 @@ export async function updateForOrg(
     citySlug = city.slug
   }
 
-  // The slug embeds the name and the city. While a listing is a DRAFT it has
-  // never been public, so a change to either regenerates the slug rather than
-  // redirecting (BR-002 freezes slugs from publication). It is written in the
-  // same transaction as the other fields, after all validation.
+  // The slug embeds the name and the city. A listing that has never been
+  // public (`firstPublishedAt` is null) has no URL anyone holds, so a change to
+  // either regenerates the slug rather than redirecting (BR-002 freezes slugs
+  // from first publication). It is written in the same transaction as the other
+  // fields, after all validation.
   const renamed = body.name !== undefined && body.name !== current.name
   let slug: string | undefined
-  if ((cityId || renamed) && current.status === 'DRAFT') {
+  if ((cityId || renamed) && !hasEverBeenPublished(current)) {
     slug = await availableListingSlug(slugify(`${body.name ?? current.name} ${citySlug}`))
   }
 

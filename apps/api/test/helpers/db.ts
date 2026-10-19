@@ -42,6 +42,7 @@ export async function seedMinimal(): Promise<MinimalSeed> {
       name: 'Alpha Academy',
       status: 'PUBLISHED',
       publishedAt: new Date('2026-01-01T00:00:00Z'),
+      firstPublishedAt: new Date('2026-01-01T00:00:00Z'),
       organizationId: org.id,
       cityId: city.id,
       locality: 'Kothrud',

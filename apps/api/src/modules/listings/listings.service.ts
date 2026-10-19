@@ -34,13 +34,20 @@ export async function assertOrgOwnsListing(listingId: string, organizationId: st
   }
 }
 
+/// BR-002: once a listing has been public its slug and city are frozen,
+/// whatever its status now. A suspended or resubmitted listing is still the
+/// URL Google holds.
+export function hasEverBeenPublished(listing: { firstPublishedAt: Date | null }): boolean {
+  return listing.firstPublishedAt !== null
+}
+
 /// BR-002: a published slug is frozen. Google is the acquisition channel, so a
 /// changed URL is lost traffic.
 export async function changeSlug(listingId: string, nextSlug: string) {
   const listing = await repo.findById(listingId)
   if (!listing) throw new NotFoundError('Listing not found')
 
-  if (listing.status === 'PUBLISHED') {
+  if (hasEverBeenPublished(listing)) {
     throw new ConflictError('SLUG_IMMUTABLE', 'A published listing slug cannot be changed')
   }
   if (listing.slug === nextSlug) return

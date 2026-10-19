@@ -77,6 +77,16 @@ describe('changeSlug (BR-002)', () => {
     })
   })
 
+  it('refuses a SUSPENDED listing that was published', async () => {
+    await prisma.listing.update({
+      where: { id: seed.publishedListingId },
+      data: { status: 'SUSPENDED' },
+    })
+    await expect(changeSlug(seed.publishedListingId, 'new-slug')).rejects.toMatchObject({
+      code: 'SLUG_IMMUTABLE',
+    })
+  })
+
   it('allows changing a draft slug', async () => {
     await changeSlug(seed.draftListingId, 'renamed-draft')
     const listing = await prisma.listing.findUniqueOrThrow({ where: { id: seed.draftListingId } })

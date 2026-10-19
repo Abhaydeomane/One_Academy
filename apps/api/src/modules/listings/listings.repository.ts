@@ -9,9 +9,16 @@ export type ListingCore = {
   slug: string
   status: ListingStatus
   organizationId: string
+  firstPublishedAt: Date | null
 }
 
-const CORE_SELECT = { id: true, slug: true, status: true, organizationId: true } as const
+const CORE_SELECT = {
+  id: true,
+  slug: true,
+  status: true,
+  organizationId: true,
+  firstPublishedAt: true,
+} as const
 
 export async function findBySlug(slug: string): Promise<ListingCore | null> {
   return prisma.listing.findUnique({ where: { slug }, select: CORE_SELECT })
@@ -147,6 +154,10 @@ export async function publishAndVerify(
       data: { status: 'PUBLISHED', publishedAt: at, rejectionReason: null },
     })
     if (listing.count === 0) return false
+    await tx.listing.updateMany({
+      where: { id, firstPublishedAt: null },
+      data: { firstPublishedAt: at },
+    })
     await tx.organization.updateMany({
       where: { id: organizationId, verifiedAt: null },
       data: { verifiedAt: at, verifiedByClerkUserId: verifierClerkUserId },

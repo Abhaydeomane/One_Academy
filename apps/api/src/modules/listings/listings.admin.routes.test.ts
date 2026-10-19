@@ -89,6 +89,30 @@ describe('POST /api/v1/admin/listings/:listingId/publish (BR-001)', () => {
     expect(listing.publishedAt).toBeInstanceOf(Date)
   })
 
+  it('sets firstPublishedAt on first publish and never moves it', async () => {
+    await prisma.listing.update({
+      where: { id: seed.draftListingId },
+      data: { status: 'PENDING_REVIEW' },
+    })
+    await testApp()
+      .post(`/api/v1/admin/listings/${seed.draftListingId}/publish`)
+      .set('x-test-auth', asAdmin)
+    const first = await prisma.listing.findUniqueOrThrow({ where: { id: seed.draftListingId } })
+    expect(first.firstPublishedAt).toEqual(first.publishedAt)
+
+    await prisma.listing.update({
+      where: { id: seed.draftListingId },
+      data: { status: 'PENDING_REVIEW', publishedAt: new Date('2020-01-01T00:00:00Z') },
+    })
+    const res = await testApp()
+      .post(`/api/v1/admin/listings/${seed.draftListingId}/publish`)
+      .set('x-test-auth', asAdmin)
+    expect(res.status).toBe(200)
+    const second = await prisma.listing.findUniqueOrThrow({ where: { id: seed.draftListingId } })
+    expect(second.publishedAt?.getTime()).toBeGreaterThan(Date.parse('2020-01-02T00:00:00Z'))
+    expect(second.firstPublishedAt).toEqual(first.firstPublishedAt)
+  })
+
   it('409s an already published listing', async () => {
     const res = await testApp()
       .post(`/api/v1/admin/listings/${seed.publishedListingId}/publish`)
