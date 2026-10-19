@@ -191,6 +191,27 @@ export async function recordPartnerEdit(listingId: string, before: WatchedSnapsh
   }
 }
 
+/// One partner edit made outside the listing row itself (media), with P2b's
+/// rules applied around it: BR-017 (the write returns false when the listing
+/// is in review), BR-018 (baseline before, flag after) and ADR 0018 (a live
+/// listing's public pages are refreshed).
+export async function applyPartnerEdit<T>(
+  listingId: string,
+  write: () => Promise<T | false>,
+): Promise<T> {
+  const before = await ensureReviewBaseline(listingId)
+  const result = await write()
+  if (result === false) {
+    throw new ConflictError(
+      'LISTING_UNDER_REVIEW',
+      'A listing cannot be edited while it is being reviewed; withdraw it first',
+    )
+  }
+  await recordPartnerEdit(listingId, before)
+  if (await isPublished(listingId)) await revalidatePublicPages()
+  return result
+}
+
 function toAdminSummary(row: repo.ModerationRow | repo.ModerationDetailRow): AdminListingSummary {
   return {
     id: row.id,

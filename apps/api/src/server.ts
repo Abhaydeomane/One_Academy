@@ -14,6 +14,7 @@ import {
 } from './modules/institutes/institutes.partner.routes.js'
 import { institutesRouter } from './modules/institutes/institutes.routes.js'
 import { adminListingsRouter } from './modules/listings/listings.admin.routes.js'
+import { partnerMediaRouter } from './modules/media/media.partner.routes.js'
 
 // Assembly only. Business logic belongs in a module service.
 export function createServer(): Express {
@@ -69,6 +70,7 @@ export function createServer(): Express {
   app.use('/api/v1/partner/listings', partnerInstitutesRouter)
   app.use('/api/v1/partner/reference', partnerReferenceRouter)
   app.use('/api/v1/partner/batches', partnerBatchesRouter)
+  app.use('/api/v1/partner', partnerMediaRouter)
   app.use('/api/v1/admin/listings', adminListingsRouter)
 
   app.use(errorHandler)

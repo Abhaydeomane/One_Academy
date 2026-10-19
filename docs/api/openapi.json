@@ -44,7 +44,9 @@
                   "CITY_IMMUTABLE",
                   "UPSTREAM_UNAVAILABLE",
                   "LISTING_UNDER_REVIEW",
-                  "REVIEW_STALE"
+                  "REVIEW_STALE",
+                  "MEDIA_INVALID",
+                  "MEDIA_LIMIT_REACHED"
                 ]
               },
               "message": {
@@ -1587,6 +1589,58 @@
                       ],
                       "format": "date-time"
                     },
+                    "media": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "purpose": {
+                            "type": "string",
+                            "enum": [
+                              "LOGO",
+                              "PHOTO"
+                            ]
+                          },
+                          "url": {
+                            "type": "string"
+                          },
+                          "thumbUrl": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "alt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "width": {
+                            "type": "integer"
+                          },
+                          "height": {
+                            "type": "integer"
+                          },
+                          "sortOrder": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "purpose",
+                          "url",
+                          "thumbUrl",
+                          "alt",
+                          "width",
+                          "height",
+                          "sortOrder"
+                        ]
+                      }
+                    },
                     "batches": {
                       "type": "array",
                       "items": {
@@ -1683,6 +1737,7 @@
                     "about",
                     "website",
                     "firstPublishedAt",
+                    "media",
                     "batches"
                   ]
                 }
@@ -1850,6 +1905,58 @@
                       ],
                       "format": "date-time"
                     },
+                    "media": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "purpose": {
+                            "type": "string",
+                            "enum": [
+                              "LOGO",
+                              "PHOTO"
+                            ]
+                          },
+                          "url": {
+                            "type": "string"
+                          },
+                          "thumbUrl": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "alt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "width": {
+                            "type": "integer"
+                          },
+                          "height": {
+                            "type": "integer"
+                          },
+                          "sortOrder": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "purpose",
+                          "url",
+                          "thumbUrl",
+                          "alt",
+                          "width",
+                          "height",
+                          "sortOrder"
+                        ]
+                      }
+                    },
                     "batches": {
                       "type": "array",
                       "items": {
@@ -1946,6 +2053,7 @@
                     "about",
                     "website",
                     "firstPublishedAt",
+                    "media",
                     "batches"
                   ]
                 }
@@ -2177,6 +2285,58 @@
                       ],
                       "format": "date-time"
                     },
+                    "media": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "purpose": {
+                            "type": "string",
+                            "enum": [
+                              "LOGO",
+                              "PHOTO"
+                            ]
+                          },
+                          "url": {
+                            "type": "string"
+                          },
+                          "thumbUrl": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "alt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "width": {
+                            "type": "integer"
+                          },
+                          "height": {
+                            "type": "integer"
+                          },
+                          "sortOrder": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "purpose",
+                          "url",
+                          "thumbUrl",
+                          "alt",
+                          "width",
+                          "height",
+                          "sortOrder"
+                        ]
+                      }
+                    },
                     "batches": {
                       "type": "array",
                       "items": {
@@ -2273,6 +2433,7 @@
                     "about",
                     "website",
                     "firstPublishedAt",
+                    "media",
                     "batches"
                   ]
                 }
@@ -2860,6 +3021,58 @@
                       ],
                       "format": "date-time"
                     },
+                    "media": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "purpose": {
+                            "type": "string",
+                            "enum": [
+                              "LOGO",
+                              "PHOTO"
+                            ]
+                          },
+                          "url": {
+                            "type": "string"
+                          },
+                          "thumbUrl": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "alt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "width": {
+                            "type": "integer"
+                          },
+                          "height": {
+                            "type": "integer"
+                          },
+                          "sortOrder": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "purpose",
+                          "url",
+                          "thumbUrl",
+                          "alt",
+                          "width",
+                          "height",
+                          "sortOrder"
+                        ]
+                      }
+                    },
                     "batches": {
                       "type": "array",
                       "items": {
@@ -2956,6 +3169,7 @@
                     "about",
                     "website",
                     "firstPublishedAt",
+                    "media",
                     "batches"
                   ]
                 }
@@ -2984,6 +3198,175 @@
           },
           "409": {
             "description": "INVALID_STATUS_TRANSITION (not a draft or suspended) or LISTING_INCOMPLETE (missing verification details)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/partner/listings/{listingId}/media": {
+      "post": {
+        "summary": "Upload a logo or photo",
+        "description": "Multipart. The file is decoded and re-encoded server-side with all metadata removed (BR-019). A second LOGO replaces the first; at most 10 photos (BR-020).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "listingId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "purpose": {
+                    "type": "string",
+                    "enum": [
+                      "LOGO",
+                      "PHOTO"
+                    ]
+                  },
+                  "alt": {
+                    "type": "string",
+                    "maxLength": 120
+                  }
+                },
+                "required": [
+                  "file",
+                  "purpose"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "purpose": {
+                      "type": "string",
+                      "enum": [
+                        "LOGO",
+                        "PHOTO"
+                      ]
+                    },
+                    "url": {
+                      "type": "string"
+                    },
+                    "thumbUrl": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "alt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "width": {
+                      "type": "integer"
+                    },
+                    "height": {
+                      "type": "integer"
+                    },
+                    "sortOrder": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "purpose",
+                    "url",
+                    "thumbUrl",
+                    "alt",
+                    "width",
+                    "height",
+                    "sortOrder"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "MEDIA_INVALID (details.reason NOT_AN_IMAGE | TOO_LARGE | TOO_MANY_PIXELS) or VALIDATION_FAILED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not permitted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "MEDIA_LIMIT_REACHED or LISTING_UNDER_REVIEW",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "UPSTREAM_UNAVAILABLE (storage)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3114,6 +3497,58 @@
                       ],
                       "format": "date-time"
                     },
+                    "media": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "purpose": {
+                            "type": "string",
+                            "enum": [
+                              "LOGO",
+                              "PHOTO"
+                            ]
+                          },
+                          "url": {
+                            "type": "string"
+                          },
+                          "thumbUrl": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "alt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "width": {
+                            "type": "integer"
+                          },
+                          "height": {
+                            "type": "integer"
+                          },
+                          "sortOrder": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "purpose",
+                          "url",
+                          "thumbUrl",
+                          "alt",
+                          "width",
+                          "height",
+                          "sortOrder"
+                        ]
+                      }
+                    },
                     "batches": {
                       "type": "array",
                       "items": {
@@ -3210,6 +3645,7 @@
                     "about",
                     "website",
                     "firstPublishedAt",
+                    "media",
                     "batches"
                   ]
                 }

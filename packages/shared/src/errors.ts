@@ -21,6 +21,8 @@ export const ERROR_CODES = [
   'UPSTREAM_UNAVAILABLE',
   'LISTING_UNDER_REVIEW',
   'REVIEW_STALE',
+  'MEDIA_INVALID',
+  'MEDIA_LIMIT_REACHED',
 ] as const
 
 export type ErrorCode = (typeof ERROR_CODES)[number]

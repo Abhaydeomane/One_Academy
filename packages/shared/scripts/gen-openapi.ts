@@ -29,6 +29,7 @@ import {
   partnerListingListResponse,
   partnerReferenceResponse,
   markReviewedBody,
+  mediaAsset,
   rejectListingBody,
   suspendListingBody,
   updateBatchBody,
@@ -215,6 +216,40 @@ registry.registerPath({
     409: err(
       'INVALID_STATUS_TRANSITION (not a draft or suspended) or LISTING_INCOMPLETE (missing verification details)',
     ),
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/partner/listings/{listingId}/media',
+  summary: 'Upload a logo or photo',
+  description:
+    'Multipart. The file is decoded and re-encoded server-side with all metadata removed (BR-019). A second LOGO replaces the first; at most 10 photos (BR-020).',
+  security: secured,
+  request: {
+    params: z.object({ listingId: z.string() }),
+    body: {
+      content: {
+        'multipart/form-data': {
+          schema: z.object({
+            file: z.string().meta({ format: 'binary' }),
+            purpose: z.enum(['LOGO', 'PHOTO']),
+            alt: z.string().max(120).optional(),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    201: { description: 'Stored', ...json(mediaAsset) },
+    400: err(
+      'MEDIA_INVALID (details.reason NOT_AN_IMAGE | TOO_LARGE | TOO_MANY_PIXELS) or VALIDATION_FAILED',
+    ),
+    401: UNAUTHENTICATED,
+    403: FORBIDDEN,
+    404: NOT_FOUND,
+    409: err('MEDIA_LIMIT_REACHED or LISTING_UNDER_REVIEW'),
+    503: err('UPSTREAM_UNAVAILABLE (storage)'),
   },
 })
 

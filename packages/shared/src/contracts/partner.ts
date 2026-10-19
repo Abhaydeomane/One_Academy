@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { phoneSchema } from '../phone.js'
 import { modeSchema } from './institutes.js'
 import { batchSummary } from './batches.js'
+import { mediaAsset } from './media.js'
 
 export const LISTING_STATUSES = ['DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'SUSPENDED'] as const
 export const listingStatusSchema = z.enum(LISTING_STATUSES)
@@ -50,6 +51,8 @@ export const partnerListingDetail = partnerListingSummary.extend({
   website: z.string().nullable(),
   /// Null until first publication; afterwards the city is fixed (BR-002).
   firstPublishedAt: z.iso.datetime().nullable(),
+  /// Logo first, then photos in display order.
+  media: z.array(mediaAsset),
   batches: z.array(partnerBatchSummary),
 })
 export type PartnerListingDetail = z.infer<typeof partnerListingDetail>

@@ -54,3 +54,13 @@ export class UpstreamUnavailableError extends AppError {
     super('UPSTREAM_UNAVAILABLE', 503, message)
   }
 }
+
+export type MediaInvalidReason = 'NOT_AN_IMAGE' | 'TOO_LARGE' | 'TOO_MANY_PIXELS'
+
+/// BR-019: an upload the image pipeline will not store. `details.reason` lets
+/// the partner UI say which limit was hit.
+export class MediaInvalidError extends AppError {
+  constructor(reason: MediaInvalidReason, message = 'That file is not a usable image') {
+    super('MEDIA_INVALID', 400, message, { reason })
+  }
+}

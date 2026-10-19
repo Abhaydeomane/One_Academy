@@ -20,6 +20,7 @@ import { revalidatePublicPages } from '../../lib/revalidate.js'
 import { slugify } from '../../lib/slug.js'
 import * as accounts from '../accounts/accounts.service.js'
 import * as batches from '../batches/batches.service.js'
+import * as media from '../media/media.service.js'
 import {
   assertOrgOwnsListing,
   ensureReviewBaseline,
@@ -188,6 +189,7 @@ export async function getForOrg(
     about: row.instituteProfile?.about ?? null,
     website: row.instituteProfile?.website ?? null,
     firstPublishedAt: row.firstPublishedAt ? row.firstPublishedAt.toISOString() : null,
+    media: await media.listForListing(listingId),
     batches: await batches.listAllForListing(listingId),
   }
 }
