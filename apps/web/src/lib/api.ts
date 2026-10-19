@@ -9,6 +9,12 @@ const BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:4000'
 /// e2e/playwright.config.ts.
 const DEFAULT_TTL = Number(process.env.API_CACHE_TTL ?? '300')
 
+/// Every public API response is cached under this one tag. The API expires it
+/// through /api/revalidate after any change to what the public sees (ADR 0018);
+/// one tag rather than per-listing tags, because a suspension also changes
+/// search, landing pages, comparisons and the sitemap.
+export const PUBLIC_CACHE_TAG = 'listings'
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -41,7 +47,7 @@ export async function apiGet<T>(
 ): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
     headers: { accept: 'application/json' },
-    next: { revalidate },
+    next: { revalidate, tags: [PUBLIC_CACHE_TAG] },
   })
   if (!response.ok) throw await toApiError(response)
   return schema.parse(await response.json())

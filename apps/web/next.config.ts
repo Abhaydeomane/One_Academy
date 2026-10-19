@@ -13,6 +13,9 @@ const lanAddresses = Object.values(networkInterfaces())
 
 const config: NextConfig = {
   reactStrictMode: true,
+  // Overridable so the e2e suite can run a second, caching dev server from this
+  // same app without the two sharing a build directory and its lock.
+  distDir: process.env.NEXT_DIST_DIR ?? '.next',
   allowedDevOrigins: lanAddresses,
 }
 

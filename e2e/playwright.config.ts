@@ -10,6 +10,12 @@ const DATABASE_URL = 'postgresql://one_academy:local_dev_only@localhost:5432/one
 process.env.DATABASE_URL ??= DATABASE_URL
 process.env.NODE_ENV ??= 'test'
 
+// Shared by the API and the caching web server below, so the API's
+// revalidation call is accepted (ADR 0018). Local to the e2e run.
+const E2E_REVALIDATE_SECRET = 'e2e-revalidate-secret-at-least-32-characters'
+// revalidation.spec.ts clears the cache itself before arranging data.
+process.env.E2E_REVALIDATE_SECRET ??= E2E_REVALIDATE_SECRET
+
 export default defineConfig({
   testDir: './tests',
   fullyParallel: false,
@@ -31,7 +37,13 @@ export default defineConfig({
       reuseExistingServer: false,
       timeout: 60_000,
       stdout: 'pipe',
-      env: { DATABASE_URL, NODE_ENV: 'test', PORT: '4100' },
+      env: {
+        DATABASE_URL,
+        NODE_ENV: 'test',
+        PORT: '4100',
+        WEB_REVALIDATE_URL: 'http://localhost:3200/api/revalidate',
+        REVALIDATE_SECRET: E2E_REVALIDATE_SECRET,
+      },
     },
     {
       // Next reads PORT; the dev script deliberately hardcodes no port so the
@@ -48,6 +60,25 @@ export default defineConfig({
         // Every spec seeds different data behind the same URLs, so any
         // response caching would make assertions depend on run order.
         API_CACHE_TTL: '0',
+      },
+    },
+    {
+      // The one server that caches like production, for revalidation.spec.ts:
+      // with caching off, "the suspended page is gone on the next request"
+      // would pass whether or not revalidation works. Its own build directory
+      // lets it run beside the server above.
+      command: 'pnpm --filter @one/web dev',
+      url: 'http://localhost:3200',
+      reuseExistingServer: false,
+      timeout: 180_000,
+      stdout: 'pipe',
+      env: {
+        PORT: '3200',
+        API_BASE_URL: 'http://localhost:4100',
+        SITE_URL: 'http://localhost:3200',
+        API_CACHE_TTL: '300',
+        NEXT_DIST_DIR: '.next-e2e-cached',
+        REVALIDATE_SECRET: E2E_REVALIDATE_SECRET,
       },
     },
   ],
